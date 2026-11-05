@@ -15,6 +15,15 @@ import {
 import { apiClient } from '../../api/client';
 import { SmartphoneModel, Brand } from '../../types';
 
+const resolveImageUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const backendBase = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 export const ModelsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedBrand, setSelectedBrand] = useState('');
@@ -124,14 +133,48 @@ export const ModelsPage: React.FC = () => {
     setImageUrl(m.imageUrl || '');
   };
 
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file);
+        setImageUrl(compressed);
+      } catch (err) {
+        console.error('Error compressing image:', err);
+      }
     }
   };
 
@@ -233,9 +276,23 @@ export const ModelsPage: React.FC = () => {
               models.map((m) => (
                 <tr key={m._id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="px-6 py-4 font-bold text-slate-900 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center p-1 border border-slate-200 shrink-0 overflow-hidden">
+                    <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center p-1 border border-slate-200 shrink-0 overflow-hidden">
                       {m.imageUrl ? (
-                        <img src={m.imageUrl} alt={m.name} className="w-full h-full object-contain" />
+                        <img
+                          src={resolveImageUrl(m.imageUrl)}
+                          alt={m.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                            const parent = (e.target as HTMLElement).parentElement;
+                            if (parent) {
+                              const icon = document.createElement('div');
+                              icon.className = 'text-slate-400 font-bold text-[10px]';
+                              icon.innerText = m.name.slice(0, 3).toUpperCase();
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
                       ) : (
                         <Smartphone className="w-4 h-4 text-slate-400" />
                       )}
