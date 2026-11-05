@@ -428,27 +428,15 @@ export const InvoicesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Rubber Stamp & Authorised Signatory Footer */}
+              {/* Authorised Signatory Footer */}
               <div className="flex items-center justify-between pt-6 border-t border-slate-200">
-                {/* Authentic Circular Green Rubber Stamp */}
-                <div className="relative select-none transform -rotate-6 transition-transform hover:rotate-0">
-                  <div className="w-32 h-32 rounded-full border-4 border-dashed border-emerald-700 flex flex-col items-center justify-center p-2 text-center text-emerald-700 shadow-sm bg-emerald-50/20">
-                    <div className="w-28 h-28 rounded-full border-2 border-emerald-700 flex flex-col items-center justify-center p-1">
-                      <span className="text-[7.5px] font-black uppercase tracking-wider leading-none">
-                        ★ REVOO TECHNOLOGIES ★
-                      </span>
-                      <ShieldCheck className="w-5 h-5 my-0.5 text-emerald-700 stroke-[2.5]" />
-                      <span className="text-[8.5px] font-black uppercase tracking-widest leading-none">
-                        AUTHORISED
-                      </span>
-                      <span className="text-[7px] font-bold uppercase tracking-wider leading-none text-emerald-800 mt-0.5">
-                        BY REVOO
-                      </span>
-                      <span className="text-[6.5px] font-mono font-bold mt-0.5 text-emerald-600">
-                        {new Date().toISOString().slice(0, 10)}
-                      </span>
-                    </div>
-                  </div>
+                <div className="text-xs text-slate-500 max-w-sm">
+                  <div className="font-bold text-slate-700 mb-1">Terms & Conditions:</div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    1. All certified devices undergo a 32-point hardware and software diagnostic test.<br />
+                    2. Includes 12-Month REVOO Warranty and 7-day hassle-free replacement guarantee.<br />
+                    3. This is a digitally verified computer-generated tax invoice.
+                  </p>
                 </div>
 
                 <div className="text-right">
