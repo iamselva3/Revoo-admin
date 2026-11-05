@@ -4,6 +4,12 @@ import {
   Plus,
   Archive,
   Smartphone,
+  Laptop,
+  Tablet,
+  Tv,
+  Search,
+  Filter,
+  AlertTriangle,
   Edit,
   Layers,
   Trash2,
@@ -27,9 +33,13 @@ const resolveImageUrl = (url?: string): string | undefined => {
 export const ModelsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'phone' | 'laptop' | 'tablet' | 'tv'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingModel, setEditingModel] = useState<SmartphoneModel | null>(null);
   const [showVariantModal, setShowVariantModal] = useState<SmartphoneModel | null>(null);
+  const [confirmDeleteModel, setConfirmDeleteModel] = useState<SmartphoneModel | null>(null);
+  const [confirmArchiveModel, setConfirmArchiveModel] = useState<SmartphoneModel | null>(null);
 
   // Form state (used for Add and Edit)
   const [name, setName] = useState('');
@@ -211,48 +221,167 @@ export const ModelsPage: React.FC = () => {
     });
   };
 
+  const detectCategory = (model: SmartphoneModel): 'phone' | 'laptop' | 'tablet' | 'tv' => {
+    const name = (model.name || '').toLowerCase();
+    if (name.includes('tv') || name.includes('bravia') || name.includes('oled') || name.includes('qled') || name.includes('crystal') || name.includes('uhd')) return 'tv';
+    if (name.includes('ipad') || name.includes('tab') || name.includes('pad')) return 'tablet';
+    if (
+      name.includes('macbook') ||
+      name.includes('laptop') ||
+      name.includes('xps') ||
+      name.includes('alienware') ||
+      name.includes('thinkpad') ||
+      name.includes('zenbook') ||
+      name.includes('vivobook') ||
+      name.includes('omen') ||
+      name.includes('predator') ||
+      name.includes('inspiron') ||
+      name.includes('swift') ||
+      name.includes('yoga') ||
+      name.includes('legion') ||
+      name.includes('spectre') ||
+      name.includes('envy') ||
+      name.includes('air') ||
+      name.includes('pro 14') ||
+      name.includes('pro 16')
+    )
+      return 'laptop';
+    return 'phone';
+  };
+
+  const filteredModels = (models || []).filter((m) => {
+    const cat = detectCategory(m);
+    const matchesCat = selectedCategory === 'all' || cat === selectedCategory;
+    const matchesSearch = searchQuery.trim() === '' || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCat && matchesSearch;
+  });
+
+  const getCategoryIcon = (cat: 'phone' | 'laptop' | 'tablet' | 'tv') => {
+    switch (cat) {
+      case 'laptop':
+        return <Laptop className="w-3.5 h-3.5 text-emerald-600" />;
+      case 'tablet':
+        return <Tablet className="w-3.5 h-3.5 text-purple-600" />;
+      case 'tv':
+        return <Tv className="w-3.5 h-3.5 text-amber-600" />;
+      default:
+        return <Smartphone className="w-3.5 h-3.5 text-indigo-600" />;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Smartphone Catalogue</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Maintain smartphone device models, storage variations, and base valuation prices.
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Smartphone className="w-6 h-6 text-revoo-700" /> Selling Models Catalogue (Buyback)
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Authoritative device models, storage variations, and base valuation prices across Phones, Laptops, Tablets, and TVs.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Brand Filter */}
-          <select
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
-            className="p-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700"
-          >
-            <option value="">All Brands</option>
-            {brands?.map((b) => (
-              <option key={b._id} value={b._id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
+        <button
+          onClick={handleOpenAdd}
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-revoo-700 hover:bg-revoo-800 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+        >
+          <Plus className="w-4 h-4" /> Add Model
+        </button>
+      </div>
 
-          <button
-            onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-revoo-700 hover:bg-revoo-800 text-white text-xs font-semibold rounded-lg shadow-sm transition"
-          >
-            <Plus className="w-4 h-4" /> Add Model
-          </button>
+      {/* Aesthetic Filters Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        {/* Category Filter Pills */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {[
+              { id: 'all', label: 'All Devices', icon: Filter },
+              { id: 'phone', label: 'Mobile Phones', icon: Smartphone },
+              { id: 'laptop', label: 'Laptops', icon: Laptop },
+              { id: 'tablet', label: 'Tablets & iPads', icon: Tablet },
+              { id: 'tv', label: 'Smart TVs', icon: Tv },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = selectedCategory === tab.id;
+              const count = tab.id === 'all'
+                ? models?.length || 0
+                : models?.filter((m) => detectCategory(m) === tab.id).length || 0;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(tab.id as any)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-600'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Aesthetic Brand Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Brand:</span>
+            <div className="relative">
+              <select
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                className="appearance-none pl-3 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-revoo-500 cursor-pointer transition shadow-2xs"
+              >
+                <option value="">All Brands</option>
+                {brands?.map((b) => (
+                  <option key={b._id} value={b._id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search model name (e.g. iPhone 15, MacBook Air, Alienware, Galaxy S24, Sony Bravia)..."
+            className="w-full text-xs pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-revoo-500 text-slate-800 placeholder-slate-400 transition"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Models Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
+          <thead className="bg-slate-50/80 text-slate-600 font-semibold uppercase tracking-wider border-b border-slate-200">
             <tr>
               <th className="px-6 py-3.5">Device Model</th>
               <th className="px-6 py-3.5">Brand</th>
+              <th className="px-6 py-3.5">Category</th>
               <th className="px-6 py-3.5">Release Year</th>
               <th className="px-6 py-3.5">Base Buyback Price</th>
               <th className="px-6 py-3.5">Status</th>
@@ -263,109 +392,115 @@ export const ModelsPage: React.FC = () => {
             {isLoading ? (
               [...Array(6)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td colSpan={6} className="px-6 py-4 bg-slate-50/50"></td>
+                  <td colSpan={7} className="px-6 py-4 bg-slate-50/50"></td>
                 </tr>
               ))
-            ) : !models || models.length === 0 ? (
+            ) : filteredModels.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
-                  No smartphone models found.
+                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <Smartphone className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="font-semibold">No models found.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your category filter or search query.</p>
                 </td>
               </tr>
             ) : (
-              models.map((m) => (
-                <tr key={m._id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-6 py-4 font-bold text-slate-900 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center p-1 border border-slate-200 shrink-0 overflow-hidden">
-                      {m.imageUrl ? (
-                        <img
-                          src={resolveImageUrl(m.imageUrl)}
-                          alt={m.name}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                            const parent = (e.target as HTMLElement).parentElement;
-                            if (parent) {
-                              const icon = document.createElement('div');
-                              icon.className = 'text-slate-400 font-bold text-[10px]';
-                              icon.innerText = m.name.slice(0, 3).toUpperCase();
-                              parent.appendChild(icon);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <Smartphone className="w-4 h-4 text-slate-400" />
-                      )}
-                    </div>
-                    <span>{m.name}</span>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-700">
-                    {typeof m.brandId === 'object' ? (m.brandId as any).name : 'Brand'}
-                  </td>
-                  <td className="px-6 py-4 text-slate-500">{m.releaseYear}</td>
-                  <td className="px-6 py-4 font-bold text-revoo-700 font-mono text-sm">
-                    ₹{m.basePrice.toLocaleString('en-IN')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${
-                        m.isPublished
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-slate-100 text-slate-500 border-slate-300'
-                      }`}
-                    >
-                      {m.isPublished ? 'Published' : 'Hidden'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="inline-flex items-center gap-1.5">
-                      {/* Edit Button */}
-                      <button
-                        onClick={() => handleOpenEdit(m)}
-                        title="Edit Device Model & Price"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition"
+              filteredModels.map((m) => {
+                const cat = detectCategory(m);
+                return (
+                  <tr key={m._id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-6 py-3.5 font-bold text-slate-900 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center p-1 border border-slate-200 shrink-0 overflow-hidden shadow-2xs">
+                        {m.imageUrl ? (
+                          <img
+                            src={resolveImageUrl(m.imageUrl)}
+                            alt={m.name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                              const parent = (e.target as HTMLElement).parentElement;
+                              if (parent) {
+                                const icon = document.createElement('div');
+                                icon.className = 'text-slate-400 font-bold text-[10px]';
+                                icon.innerText = m.name.slice(0, 3).toUpperCase();
+                                parent.appendChild(icon);
+                              }
+                            }}
+                          />
+                        ) : (
+                          getCategoryIcon(cat)
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block truncate">{m.name}</span>
+                        <span className="block text-[10px] text-slate-400 font-mono font-normal">{m.slug}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5 font-medium text-slate-700">
+                      {typeof m.brandId === 'object' ? (m.brandId as any).name : 'Brand'}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700">
+                        {getCategoryIcon(cat)}
+                        {cat}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-slate-500">{m.releaseYear}</td>
+                    <td className="px-6 py-3.5 font-bold text-revoo-700 font-mono text-sm">
+                      ₹{m.basePrice.toLocaleString('en-IN')}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded-full border ${
+                          m.isPublished
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-slate-100 text-slate-500 border-slate-300'
+                        }`}
                       >
-                        <Edit className="w-3.5 h-3.5" /> Edit
-                      </button>
+                        {m.isPublished ? 'Published' : 'Hidden'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5 text-right">
+                      <div className="inline-flex items-center gap-1.5">
+                        {/* Edit Button */}
+                        <button
+                          onClick={() => handleOpenEdit(m)}
+                          title="Edit Device Model & Price"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition"
+                        >
+                          <Edit className="w-3.5 h-3.5" /> Edit
+                        </button>
 
-                      {/* Add Variant Button */}
-                      <button
-                        onClick={() => setShowVariantModal(m)}
-                        title="Add Storage Variant"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-md border border-slate-200 transition"
-                      >
-                        <Layers className="w-3.5 h-3.5" /> + Variant
-                      </button>
+                        {/* Add Variant Button */}
+                        <button
+                          onClick={() => setShowVariantModal(m)}
+                          title="Add Storage Variant"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition"
+                        >
+                          <Layers className="w-3.5 h-3.5" /> + Variant
+                        </button>
 
-                      {/* Archive Button */}
-                      <button
-                        onClick={() => {
-                          if (confirm(`Archive ${m.name}? Historical buybacks remain safe.`)) {
-                            archiveMutation.mutate(m._id);
-                          }
-                        }}
-                        title="Archive Model"
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-md border border-slate-200 transition"
-                      >
-                        <Archive className="w-3.5 h-3.5" />
-                      </button>
+                        {/* Archive Button - Safe In-App Confirmation */}
+                        <button
+                          onClick={() => setConfirmArchiveModel(m)}
+                          title="Archive Model"
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-slate-200 transition"
+                        >
+                          <Archive className="w-3.5 h-3.5" />
+                        </button>
 
-                      {/* Delete Button */}
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to permanently delete ${m.name}? This cannot be undone.`)) {
-                            deleteModelMutation.mutate(m._id);
-                          }
-                        }}
-                        title="Delete Model Permanently"
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                        {/* Delete Button - Safe In-App Confirmation */}
+                        <button
+                          onClick={() => setConfirmDeleteModel(m)}
+                          title="Delete Model Permanently"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -597,6 +732,77 @@ export const ModelsPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Safe In-App Delete Confirmation Modal */}
+      {confirmDeleteModel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600 mb-4 border border-red-100">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Delete Device Model?</h3>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              Are you sure you want to permanently delete <strong className="text-slate-800">{confirmDeleteModel.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteModel(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleteModelMutation.isPending}
+                onClick={() => {
+                  deleteModelMutation.mutate(confirmDeleteModel._id, {
+                    onSettled: () => setConfirmDeleteModel(null),
+                  });
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition"
+              >
+                {deleteModelMutation.isPending ? 'Deleting...' : 'Yes, Delete Model'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Safe In-App Archive Confirmation Modal */}
+      {confirmArchiveModel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 mb-4 border border-amber-100">
+              <Archive className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Archive Device Model?</h3>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+              Archiving <strong className="text-slate-800">{confirmArchiveModel.name}</strong> will hide it from customer valuation searches while preserving all historical buyback request records.
+            </p>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setConfirmArchiveModel(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={archiveMutation.isPending}
+                onClick={() => {
+                  archiveMutation.mutate(confirmArchiveModel._id, {
+                    onSettled: () => setConfirmArchiveModel(null),
+                  });
+                }}
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition"
+              >
+                {archiveMutation.isPending ? 'Archiving...' : 'Yes, Archive Model'}
+              </button>
+            </div>
           </div>
         </div>
       )}

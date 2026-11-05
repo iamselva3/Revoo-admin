@@ -163,8 +163,11 @@ export const PricingPage: React.FC = () => {
       if (pricingRule.deductions?.battery) setBatteryDeductions(pricingRule.deductions.battery);
       if (pricingRule.deductions?.functional) setFunctionalDeductions(pricingRule.deductions.functional);
       if (pricingRule.deductions?.accessoriesBonus) setAccessoriesBonus(pricingRule.deductions.accessoriesBonus);
+    } else if (selectedModel) {
+      setBasePrice(selectedModel.basePrice || 45000);
+      setStorageAdj(0);
     }
-  }, [pricingRule]);
+  }, [pricingRule, selectedModel]);
 
   const updateMutation = useMutation({
     mutationFn: async (payload: any) => {
