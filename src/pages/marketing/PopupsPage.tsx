@@ -13,26 +13,9 @@ import {
   Layers,
   Power,
   X,
+  Loader2,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
-
-interface Banner {
-  _id: string;
-  tag: string;
-  title: string;
-  subtitle: string;
-  badge: string;
-  color1: string;
-  color2: string;
-  icon: string;
-  imageUrl?: string;
-  isPopupModal?: boolean;
-  popupActionText?: string;
-  popupActionUrl?: string;
-  linkUrl: string;
-  isActive: boolean;
-  displayOrder: number;
-}
 
 export const PopupsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -47,80 +30,124 @@ export const PopupsPage: React.FC = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [color1, setColor1] = useState('#059669');
   const [color2, setColor2] = useState('#022C22');
-  const [existingPopupId, setExistingPopupId] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
-  const { data: banners, isLoading } = useQuery<Banner[]>({
-    queryKey: ['admin-banners'],
-    queryFn: async () => (await apiClient.get('/catalogue/admin/banners')).data.data,
+  const { data: popupData, isLoading } = useQuery({
+    queryKey: ['admin-popup'],
+    queryFn: async () => (await apiClient.get('/catalogue/admin/popup')).data.data,
   });
 
-  // Find existing popup modal banner from banners list
   useEffect(() => {
-    if (banners) {
-      const activePopup = banners.find((b) => b.isPopupModal === true);
-      if (activePopup) {
-        setExistingPopupId(activePopup._id);
-        setIsEnabled(activePopup.isActive !== false);
-        setTag(activePopup.tag || 'LIVE SALE');
-        setTitle(activePopup.title || 'Special Device Sale');
-        setSubtitle(activePopup.subtitle || '');
-        setBadge(activePopup.badge || 'Exclusive Deal');
-        setPopupActionText(activePopup.popupActionText || 'BUY NOW — EXPLORE SALE');
-        setPopupActionUrl(activePopup.popupActionUrl || '/buy');
-        setImageUrl(activePopup.imageUrl || '');
-        setColor1(activePopup.color1 || '#059669');
-        setColor2(activePopup.color2 || '#022C22');
-      }
+    if (popupData) {
+      setIsEnabled(popupData.isEnabled === true);
+      if (popupData.tag) setTag(popupData.tag);
+      if (popupData.title) setTitle(popupData.title);
+      if (popupData.subtitle) setSubtitle(popupData.subtitle);
+      if (popupData.badge) setBadge(popupData.badge);
+      if (popupData.popupActionText) setPopupActionText(popupData.popupActionText);
+      if (popupData.popupActionUrl) setPopupActionUrl(popupData.popupActionUrl);
+      if (popupData.imageUrl) setImageUrl(popupData.imageUrl);
+      if (popupData.color1) setColor1(popupData.color1);
+      if (popupData.color2) setColor2(popupData.color2);
     }
-  }, [banners]);
+  }, [popupData]);
 
   const savePopupMutation = useMutation({
     mutationFn: async (payload: any) => {
-      if (existingPopupId) {
-        return (await apiClient.put(`/catalogue/admin/banners/${existingPopupId}`, payload)).data;
-      } else {
-        return (await apiClient.post('/catalogue/admin/banners', payload)).data;
-      }
+      return (await apiClient.post('/catalogue/admin/popup', payload)).data;
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-popup'] });
       queryClient.invalidateQueries({ queryKey: ['admin-banners'] });
       alert('Launch popup configuration saved successfully and published to the live mobile app!');
     },
     onError: (err: any) => {
-      alert(`Error saving popup: ${err?.message || 'Please check backend connection.'}`);
+      const msg = err.response?.data?.message || err.message || 'Error saving popup.';
+      alert(`Error saving popup (${err.response?.status || '500'}): ${msg}`);
     },
   });
 
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Client-side image compression: converts any high-res camera photo (8MB+) to an optimized mobile web banner (~120KB)
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDim = 1000;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsCompressing(true);
+      try {
+        const compressed = await compressImage(file);
+        setImageUrl(compressed);
+      } catch (err) {
+        alert('Could not optimize image file.');
+      } finally {
+        setIsCompressing(false);
+      }
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = {
+  const handleToggleStatus = () => {
+    const nextState = !isEnabled;
+    setIsEnabled(nextState);
+    // Instant save when toggling status
+    savePopupMutation.mutate({
+      isEnabled: nextState,
       tag,
       title,
       subtitle,
       badge,
       color1,
       color2,
-      icon: 'local_fire_department',
       imageUrl,
-      isPopupModal: true,
       popupActionText,
       popupActionUrl,
-      linkUrl: popupActionUrl,
-      isActive: isEnabled,
-      displayOrder: 0,
-    };
-    savePopupMutation.mutate(payload);
+    });
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    savePopupMutation.mutate({
+      isEnabled,
+      tag,
+      title,
+      subtitle,
+      badge,
+      color1,
+      color2,
+      imageUrl,
+      popupActionText,
+      popupActionUrl,
+    });
   };
 
   return (
@@ -142,15 +169,20 @@ export const PopupsPage: React.FC = () => {
           <span className="text-xs font-bold text-slate-700">Popup Status:</span>
           <button
             type="button"
-            onClick={() => setIsEnabled(!isEnabled)}
+            onClick={handleToggleStatus}
+            disabled={savePopupMutation.isPending}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               isEnabled
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-                : 'bg-slate-200 text-slate-600'
+                : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
             }`}
           >
             <Power className="w-3.5 h-3.5" />
-            {isEnabled ? 'ENABLED (LIVE IN APP)' : 'DISABLED (OFF)'}
+            {savePopupMutation.isPending
+              ? 'SAVING...'
+              : isEnabled
+              ? 'ENABLED (LIVE IN APP)'
+              : 'DISABLED (OFF)'}
           </button>
         </div>
       </div>
@@ -164,10 +196,14 @@ export const PopupsPage: React.FC = () => {
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" /> Popup Campaign Content
               </h2>
-              {isEnabled && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+              {isEnabled ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
                   Showing to Customers
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                  Muted (Not shown)
                 </span>
               )}
             </div>
@@ -247,11 +283,16 @@ export const PopupsPage: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 shadow-sm transition">
-                  <Upload className="w-4 h-4 text-emerald-600" />
-                  <span>Upload Poster Image</span>
+                  {isCompressing ? (
+                    <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-emerald-600" />
+                  )}
+                  <span>{isCompressing ? 'Optimizing Image...' : 'Upload Poster Image'}</span>
                   <input
                     type="file"
                     accept="image/*"
+                    disabled={isCompressing}
                     className="hidden"
                     onChange={handleImageFileUpload}
                   />
@@ -295,13 +336,13 @@ export const PopupsPage: React.FC = () => {
 
             <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                {isEnabled ? 'Will automatically popup when customer launches the app.' : 'Popup is currently disabled.'}
+                {isEnabled ? 'Popup is ENABLED for customers.' : 'Popup is DISABLED.'}
               </span>
 
               <button
                 type="submit"
-                disabled={savePopupMutation.isPending}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition"
+                disabled={savePopupMutation.isPending || isCompressing}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {savePopupMutation.isPending ? 'Saving to Cloud...' : 'Save & Publish to App'}
@@ -316,8 +357,12 @@ export const PopupsPage: React.FC = () => {
             <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <Smartphone className="w-4 h-4" /> Live Customer Screen Preview
             </span>
-            <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">
-              {isEnabled ? 'Active' : 'Muted'}
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
+                isEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-slate-800 text-slate-400'
+              }`}
+            >
+              {isEnabled ? 'LIVE' : 'MUTED'}
             </span>
           </div>
 
@@ -382,4 +427,3 @@ export const PopupsPage: React.FC = () => {
     </div>
   );
 };
-
