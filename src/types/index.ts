@@ -218,3 +218,27 @@ export interface DashboardMetrics {
   openEnquiries: number;
 }
 
+export interface RefurbishedProduct {
+  _id: string;
+  name: string;
+  brand: string;
+  category?: string;
+  storage: string;
+  color: string;
+  grade: 'PRISTINE' | 'EXCELLENT' | 'VERY_GOOD';
+  batteryHealth: number;
+  originalPrice: number;
+  salePrice: number;
+  discountPercentage: number;
+  offerTag?: string;
+  warrantyMonths: number;
+  imageUrl: string;
+  inspectionScore: number;
+  inStock: boolean;
+  isFeatured: boolean;
+  highlights: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+

@@ -7,6 +7,7 @@ import { RequestsListPage } from './pages/requests/RequestsListPage';
 import { RequestDetailPage } from './pages/requests/RequestDetailPage';
 import { ModelsPage } from './pages/catalogue/ModelsPage';
 import { BrandsPage } from './pages/catalogue/BrandsPage';
+import { BuyPhonesPage } from './pages/catalogue/BuyPhonesPage';
 import { PricingPage } from './pages/pricing/PricingPage';
 import { BannersPage } from './pages/marketing/BannersPage';
 import { PopupsPage } from './pages/marketing/PopupsPage';
@@ -51,6 +52,8 @@ export const App: React.FC = () => {
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="catalogue" element={<ModelsPage />} />
         <Route path="catalogue/brands" element={<BrandsPage />} />
+        <Route path="buy-inventory" element={<BuyPhonesPage />} />
+        <Route path="catalogue/buy-phones" element={<BuyPhonesPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="banners" element={<BannersPage />} />
         <Route path="popups" element={<PopupsPage />} />

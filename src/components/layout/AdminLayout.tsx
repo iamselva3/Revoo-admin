@@ -13,6 +13,7 @@ import {
   Image,
   Receipt,
   Flame,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -23,7 +24,8 @@ export const AdminLayout: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Overview', icon: LayoutDashboard },
     { to: '/requests', label: 'Buyback Requests', icon: Inbox },
-    { to: '/catalogue', label: 'Phone Catalogue', icon: Smartphone },
+    { to: '/catalogue', label: 'Selling Models (Buyback)', icon: Smartphone },
+    { to: '/buy-inventory', label: 'Buy Phones (Certified Store)', icon: ShoppingBag },
     { to: '/pricing', label: 'Pricing Engine', icon: Tag },
     { to: '/banners', label: 'Banners & Offers', icon: Image },
     { to: '/popups', label: 'App Launch Popup', icon: Flame },
