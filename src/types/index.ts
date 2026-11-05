@@ -233,6 +233,7 @@ export interface RefurbishedProduct {
   offerTag?: string;
   warrantyMonths: number;
   imageUrl: string;
+  galleryImages?: string[];
   inspectionScore: number;
   inStock: boolean;
   isFeatured: boolean;

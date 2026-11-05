@@ -54,6 +54,8 @@ export const BuyPhonesPage: React.FC = () => {
   const [offerTag, setOfferTag] = useState('');
   const [warrantyMonths, setWarrantyMonths] = useState(12);
   const [imageUrl, setImageUrl] = useState('');
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
+  const [newGalleryUrl, setNewGalleryUrl] = useState('');
   const [inStock, setInStock] = useState(true);
   const [isFeatured, setIsFeatured] = useState(true);
   const [highlightsText, setHighlightsText] = useState(
@@ -225,6 +227,8 @@ export const BuyPhonesPage: React.FC = () => {
     setOfferTag('');
     setWarrantyMonths(12);
     setImageUrl('');
+    setGalleryImages([]);
+    setNewGalleryUrl('');
     setInStock(true);
     setIsFeatured(true);
     setHighlightsText(
@@ -253,6 +257,8 @@ export const BuyPhonesPage: React.FC = () => {
     setOfferTag(p.offerTag || '');
     setWarrantyMonths(p.warrantyMonths || 12);
     setImageUrl(p.imageUrl || '');
+    setGalleryImages(p.galleryImages || []);
+    setNewGalleryUrl('');
     setInStock(p.inStock !== false);
     setIsFeatured(p.isFeatured !== false);
     setHighlightsText((p.highlights || []).join('\n'));
@@ -291,6 +297,7 @@ export const BuyPhonesPage: React.FC = () => {
       offerTag: offerTag.trim() || `Save ₹${(originalPrice - salePrice).toLocaleString('en-IN')}`,
       warrantyMonths: Number(warrantyMonths),
       imageUrl: imageUrl.trim() || 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600',
+      galleryImages: galleryImages.filter((img) => img && img.trim().length > 0),
       inStock,
       isFeatured,
       highlights: highlights.length > 0 ? highlights : ['32-Point Quality Inspected', '12-Month REVOO Warranty'],
@@ -339,6 +346,57 @@ export const BuyPhonesPage: React.FC = () => {
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Additional angle photo upload with client-side compression
+  const handleAddGalleryFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
+          setGalleryImages((prev) => [...prev, compressedBase64]);
+        }
+        setIsCompressing(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleAddGalleryUrl = () => {
+    if (newGalleryUrl.trim()) {
+      setGalleryImages((prev) => [...prev, newGalleryUrl.trim()]);
+      setNewGalleryUrl('');
+    }
+  };
+
+  const handleRemoveGalleryImage = (index: number) => {
+    setGalleryImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Brand list for quick filter & form
@@ -874,34 +932,134 @@ export const BuyPhonesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 6: Image Upload / URL */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Product Image (URL or Upload)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://... or upload image"
-                    className="flex-1 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-revoo-600/20"
-                  />
-                  <label className="cursor-pointer px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-300">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Upload</span>
-                    <input type="file" accept="image/*" onChange={handleImageFile} className="hidden" />
-                  </label>
-                </div>
-                {isCompressing && (
-                  <span className="text-[11px] text-amber-600 mt-1 block">Compressing image client-side...</span>
-                )}
-                {imageUrl && (
-                  <div className="mt-2 flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                    <img src={imageUrl} alt="preview" className="w-12 h-14 object-contain rounded-lg bg-white p-1" />
-                    <span className="text-xs text-slate-500 font-medium truncate">Preview ready</span>
+              {/* Product Photos Section: Primary View + Multi-Angle Gallery */}
+              <div className="space-y-3 p-4 bg-slate-50/80 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Product Photos & Angles
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Primary view is shown first. Additional angles appear in the client app photo carousel.
+                    </p>
                   </div>
-                )}
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    {1 + galleryImages.length} Photo{1 + galleryImages.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                {/* 1. Primary Photo */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold text-slate-700">1. Primary Cover Photo (Main Screen)</span>
+                    {imageUrl && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Active Cover
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="Paste primary photo URL or upload below..."
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-revoo-600/20"
+                    />
+                    <label className="cursor-pointer px-4 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors border border-slate-300 shadow-2xs">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload</span>
+                      <input type="file" accept="image/*" onChange={handleImageFile} className="hidden" />
+                    </label>
+                  </div>
+                  {imageUrl && (
+                    <div className="mt-2 flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <img src={imageUrl} alt="preview" className="w-12 h-14 object-contain rounded-lg bg-slate-50 p-1 border border-slate-200" />
+                        <div>
+                          <span className="text-xs font-bold text-slate-800 block">Primary Front Angle</span>
+                          <span className="text-[10px] text-slate-400 block font-mono">Will be shown on catalogue grid & first screen</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl('')}
+                        className="text-xs text-red-500 hover:text-red-700 font-semibold px-2 py-1"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Additional Gallery Images (2nd, 3rd, 4th Angle...) */}
+                <div className="pt-2 border-t border-slate-200/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-700">
+                      Additional Angles (Back, Ports, Screen On, Packaging)
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {galleryImages.length} additional angle{galleryImages.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  {/* List of uploaded gallery images */}
+                  {galleryImages.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                      {galleryImages.map((img, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
+                              {idx + 2}
+                            </span>
+                            <img src={img} alt={`angle-${idx + 2}`} className="w-10 h-12 object-contain rounded-md bg-slate-50 p-1 border border-slate-100 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-slate-800 block truncate">Photo #{idx + 2}</span>
+                              <span className="text-[10px] text-slate-400 block truncate">Angle thumbnail</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveGalleryImage(idx)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition shrink-0"
+                            title="Remove photo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add New Angle Controls */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newGalleryUrl}
+                        onChange={(e) => setNewGalleryUrl(e.target.value)}
+                        placeholder="Paste URL for angle photo..."
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-revoo-600/20"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddGalleryUrl}
+                        disabled={!newGalleryUrl.trim()}
+                        className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition disabled:opacity-40"
+                      >
+                        + Add URL
+                      </button>
+                      <label className="cursor-pointer px-3.5 py-1.5 rounded-xl bg-revoo-50 hover:bg-revoo-100 text-revoo-800 border border-revoo-200 text-xs font-bold flex items-center gap-1.5 transition-colors">
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Upload Angle File</span>
+                        <input type="file" accept="image/*" onChange={handleAddGalleryFile} className="hidden" />
+                      </label>
+                    </div>
+                    {isCompressing && (
+                      <span className="text-[11px] text-amber-600 block">Compressing photo client-side...</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Row 7: Highlights */}
