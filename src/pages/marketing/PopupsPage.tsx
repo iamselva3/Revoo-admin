@@ -31,6 +31,17 @@ export const PopupsPage: React.FC = () => {
   const [color1, setColor1] = useState('#059669');
   const [color2, setColor2] = useState('#022C22');
   const [isCompressing, setIsCompressing] = useState(false);
+  const [modalAlert, setModalAlert] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
 
   const { data: popupData, isLoading } = useQuery({
     queryKey: ['admin-popup'],
@@ -111,15 +122,30 @@ export const PopupsPage: React.FC = () => {
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin-popup'] });
       queryClient.invalidateQueries({ queryKey: ['admin-banners'] });
-      alert('Launch popup configuration saved successfully and published to the live mobile app!');
+      setModalAlert({
+        isOpen: true,
+        title: 'Launch Popup Published Live',
+        message: 'The promotional popup configuration has been saved and is now live on customer devices!',
+        type: 'success',
+      });
     },
     onError: (err: any) => {
       if (err.response?.status === 413) {
-        alert('Image payload too large (413). Please choose a smaller image or enter a direct web image link.');
+        setModalAlert({
+          isOpen: true,
+          title: 'Image Payload Too Large (413)',
+          message: 'The chosen image exceeds the upload limit. Please choose a smaller photo or paste an image URL.',
+          type: 'warning',
+        });
         return;
       }
       const msg = err.response?.data?.message || err.message || 'Error saving popup.';
-      alert(`Error saving popup (${err.response?.status || '500'}): ${msg}`);
+      setModalAlert({
+        isOpen: true,
+        title: `Error Saving Popup (${err.response?.status || '500'})`,
+        message: msg,
+        type: 'error',
+      });
     },
   });
 
@@ -196,7 +222,12 @@ export const PopupsPage: React.FC = () => {
         const compressed = await compressImage(file);
         setImageUrl(compressed);
       } catch (err) {
-        alert('Could not optimize image file.');
+        setModalAlert({
+          isOpen: true,
+          title: 'Image Optimization Notice',
+          message: 'Could not automatically optimize this image file. Please try another image.',
+          type: 'warning',
+        });
       } finally {
         setIsCompressing(false);
       }
@@ -512,6 +543,44 @@ export const PopupsPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* In-App Aesthetic Alert Modal (Replaces browser window.alert) */}
+      {modalAlert.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center">
+              {modalAlert.type === 'success' && (
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+              )}
+              {modalAlert.type === 'warning' && (
+                <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <Flame className="w-6 h-6" />
+                </div>
+              )}
+              {modalAlert.type === 'error' && (
+                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                  <XCircle className="w-6 h-6" />
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">{modalAlert.title}</h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{modalAlert.message}</p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setModalAlert((prev) => ({ ...prev, isOpen: false }))}
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, History, Tag, AlertCircle, CheckCircle2 } from 'lucide-react';
+import {
+  Save,
+  History,
+  Tag,
+  AlertCircle,
+  CheckCircle2,
+  Smartphone,
+  Laptop,
+  Tablet,
+  Tv,
+  Search,
+  ChevronDown,
+  Check,
+  Filter,
+} from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { SmartphoneModel, PricingRule } from '../../types';
 
@@ -10,17 +24,79 @@ export const PricingPage: React.FC = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [reasonForChange, setReasonForChange] = useState('');
 
+  // Category and Search Filtering States
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'phone' | 'laptop' | 'tablet' | 'tv'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Fetch all models
   const { data: models } = useQuery<SmartphoneModel[]>({
     queryKey: ['admin-models-list'],
     queryFn: async () => (await apiClient.get('/catalogue/admin/models')).data.data,
   });
 
+  const detectCategory = (model: SmartphoneModel): 'phone' | 'laptop' | 'tablet' | 'tv' => {
+    const name = (model.name || '').toLowerCase();
+    if (name.includes('tv') || name.includes('bravia') || name.includes('oled tv') || name.includes('qled') || name.includes('crystal')) return 'tv';
+    if (name.includes('ipad') || name.includes('tab') || name.includes('pad')) return 'tablet';
+    if (name.includes('macbook') || name.includes('laptop') || name.includes('xps') || name.includes('alienware') || name.includes('thinkpad') || name.includes('zenbook') || name.includes('vivobook') || name.includes('omen') || name.includes('predator') || name.includes('inspiron')) return 'laptop';
+    return 'phone';
+  };
+
+  const getCategoryIcon = (cat: 'phone' | 'laptop' | 'tablet' | 'tv') => {
+    switch (cat) {
+      case 'laptop':
+        return <Laptop className="w-3.5 h-3.5 text-emerald-600" />;
+      case 'tablet':
+        return <Tablet className="w-3.5 h-3.5 text-purple-600" />;
+      case 'tv':
+        return <Tv className="w-3.5 h-3.5 text-amber-600" />;
+      default:
+        return <Smartphone className="w-3.5 h-3.5 text-indigo-600" />;
+    }
+  };
+
+  const getCategoryBadgeClass = (cat: 'phone' | 'laptop' | 'tablet' | 'tv') => {
+    switch (cat) {
+      case 'laptop':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'tablet':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'tv':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      default:
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    }
+  };
+
   useEffect(() => {
     if (models && models.length > 0 && !selectedModelId) {
       setSelectedModelId(models[0]._id);
     }
   }, [models, selectedModelId]);
+
+  // Filtered models by category & search
+  const filteredModels = (models || []).filter((m) => {
+    const cat = detectCategory(m);
+    const matchesCategory = selectedCategory === 'all' || cat === selectedCategory;
+    const matchesSearch = searchQuery.trim() === '' || m.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const selectedModel = models?.find((m) => m._id === selectedModelId);
+  const selectedModelCat = selectedModel ? detectCategory(selectedModel) : 'phone';
 
   // Fetch active pricing rule for selected model
   const { data: pricingRule, isLoading } = useQuery<PricingRule>({
@@ -121,28 +197,133 @@ export const PricingPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header with Title and Model Combobox */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Valuation & Pricing Engine</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Tag className="w-6 h-6 text-emerald-600" /> Valuation & Pricing Engine
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
             Configure authoritative model pricing, condition penalties, and view historical revisions.
           </p>
         </div>
 
-        {/* Model Selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-500 uppercase">Model:</label>
-          <select
-            value={selectedModelId}
-            onChange={(e) => setSelectedModelId(e.target.value)}
-            className="p-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800"
-          >
-            {models?.map((m: SmartphoneModel) => (
-              <option key={m._id} value={m._id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+        {/* Custom Aesthetic Model Combobox Selector */}
+        <div className="relative" ref={dropdownRef}>
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Model:</label>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center justify-between gap-3 min-w-[280px] sm:min-w-[340px] px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-300 hover:border-slate-400 rounded-xl transition text-left shadow-xs"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className={`p-1.5 rounded-lg border flex items-center justify-center shrink-0 ${getCategoryBadgeClass(selectedModelCat)}`}>
+                  {getCategoryIcon(selectedModelCat)}
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-xs font-bold text-slate-900 truncate">
+                    {selectedModel ? selectedModel.name : 'Select a device model...'}
+                  </span>
+                  <span className="block text-[10px] text-slate-500 font-mono">
+                    Base: ₹{selectedModel?.basePrice?.toLocaleString() || basePrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-emerald-600' : ''}`} />
+            </button>
+          </div>
+
+          {/* Aesthetic Dropdown Popover */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-[340px] sm:w-[400px] bg-white rounded-2xl border border-slate-200 shadow-2xl z-50 p-3 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+              {/* Category Filter Pills inside Popover */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+                {[
+                  { id: 'all', label: 'All', icon: null },
+                  { id: 'phone', label: 'Phones', icon: Smartphone },
+                  { id: 'laptop', label: 'Laptops', icon: Laptop },
+                  { id: 'tablet', label: 'Tablets', icon: Tablet },
+                  { id: 'tv', label: 'Smart TVs', icon: Tv },
+                ].map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = selectedCategory === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSelectedCategory(tab.id as any)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition shrink-0 ${
+                        isActive
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {Icon && <Icon className="w-3 h-3" />}
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search Box */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search model (e.g. Alienware, XPS, iPhone)..."
+                  className="w-full text-xs pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                  autoFocus
+                />
+              </div>
+
+              {/* Scrollable Model Options */}
+              <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+                {filteredModels.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400">
+                    No matching devices found in this category.
+                  </div>
+                ) : (
+                  filteredModels.map((m) => {
+                    const isSelected = m._id === selectedModelId;
+                    const cat = detectCategory(m);
+                    return (
+                      <button
+                        key={m._id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModelId(m._id);
+                          setIsDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition ${
+                          isSelected
+                            ? 'bg-emerald-50/80 border border-emerald-200'
+                            : 'hover:bg-slate-50 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`p-1.5 rounded-lg border flex items-center justify-center shrink-0 ${getCategoryBadgeClass(cat)}`}>
+                            {getCategoryIcon(cat)}
+                          </span>
+                          <div className="min-w-0">
+                            <span className={`block text-xs truncate ${isSelected ? 'font-bold text-emerald-950' : 'font-semibold text-slate-800'}`}>
+                              {m.name}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 font-mono">
+                              Base: ₹{m.basePrice?.toLocaleString()} • {m.releaseYear}
+                            </span>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-emerald-600 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
