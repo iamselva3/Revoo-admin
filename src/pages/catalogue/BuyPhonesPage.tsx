@@ -304,7 +304,8 @@ export const BuyPhonesPage: React.FC = () => {
     };
 
     if (editingProduct) {
-      updateMutation.mutate({ id: editingProduct._id, payload });
+      const prodId = editingProduct._id || (editingProduct as any).id;
+      updateMutation.mutate({ id: prodId, payload });
     } else {
       createMutation.mutate(payload);
     }
@@ -1154,7 +1155,7 @@ export const BuyPhonesPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => deleteMutation.mutate(deletingProduct._id)}
+                onClick={() => deleteMutation.mutate(deletingProduct._id || (deletingProduct as any).id)}
                 disabled={deleteMutation.isPending}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 disabled:opacity-50 flex items-center gap-1.5"
               >

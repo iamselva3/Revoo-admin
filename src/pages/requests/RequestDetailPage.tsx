@@ -18,6 +18,10 @@ import {
   User,
   AlertTriangle,
   Info,
+  Sparkles,
+  Star,
+  Users,
+  Check,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { BuybackRequest, RequestStatus } from '../../types';
@@ -33,7 +37,8 @@ export const RequestDetailPage: React.FC = () => {
   >(null);
 
   // Form states
-  const [collectionStaff, setCollectionStaff] = useState('Ramesh Kumar');
+  const [collectionStaff, setCollectionStaff] = useState('M. Senthil Murugan');
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [collectionDate, setCollectionDate] = useState(
     new Date(Date.now() + 24 * 3600 * 1000).toISOString().split('T')[0]
   );
@@ -104,11 +109,28 @@ export const RequestDetailPage: React.FC = () => {
     return <div className="p-12 text-center text-slate-500">Loading request dossier...</div>;
   }
 
+  const requestPincode = request?.pickupAddress?.pincode || '';
+  const requestDistrict = request?.pickupAddress?.city || request?.pickupAddress?.state || '';
+
+  const { data: staffRecommendations = [], isLoading: isStaffLoading } = useQuery({
+    queryKey: ['staff-recommendations', requestPincode, requestDistrict],
+    queryFn: async () => {
+      const res = await apiClient.get('/employees/recommend', {
+        params: {
+          pincode: requestPincode,
+          district: requestDistrict,
+        },
+      });
+      return res.data.data;
+    },
+    enabled: activeModal === 'ASSIGN_COLLECTION' || !!request,
+  });
+
   const handleAssignCollection = () => {
     mutation.mutate({
       endpoint: `/requests/admin/${id}/assign-collection`,
       payload: {
-        collectorStaffId: '65e94b281b37f40192a54321',
+        collectorStaffId: selectedStaffId || '65e94b281b37f40192a54321',
         collectorStaffName: collectionStaff,
         scheduledDate: collectionDate,
         timeSlot: collectionSlot,
@@ -550,60 +572,159 @@ export const RequestDetailPage: React.FC = () => {
       {/* 1. Modal: Assign Collection */}
       {activeModal === 'ASSIGN_COLLECTION' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Assign Collection Personnel</h3>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Collection Staff Name</label>
-              <input
-                type="text"
-                value={collectionStaff}
-                onChange={(e) => setCollectionStaff(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Pickup Date</label>
-              <input
-                type="date"
-                value={collectionDate}
-                onChange={(e) => setCollectionDate(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded text-xs"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Preferred Time Window</label>
-              <select
-                value={collectionSlot}
-                onChange={(e) => setCollectionSlot(e.target.value)}
-                className="w-full p-2 border border-slate-300 rounded text-xs"
-              >
-                <option>Morning (10:00 AM - 01:00 PM)</option>
-                <option>Afternoon (02:00 PM - 05:00 PM)</option>
-                <option>Evening (05:00 PM - 08:00 PM)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Logistics Notes</label>
-              <textarea
-                value={collectionNotes}
-                onChange={(e) => setCollectionNotes(e.target.value)}
-                placeholder="Call customer 30 minutes before arrival"
-                className="w-full p-2 border border-slate-300 rounded text-xs"
-                rows={2}
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-amber-600" /> Assign Collection Personnel
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Customer Pickup: <strong className="text-slate-800">{request.pickupAddress?.pincode || 'Tamil Nadu'}</strong> • {request.pickupAddress?.city || request.pickupAddress?.state || 'Local Hub'}
+                </p>
+              </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {/* Smart Recommendations Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Recommended Staff for this Area
+                  </label>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live Distance Match
+                  </span>
+                </div>
+
+                {isStaffLoading ? (
+                  <div className="py-4 text-center text-xs text-slate-400">Finding nearby partners...</div>
+                ) : staffRecommendations.length === 0 ? (
+                  <div className="py-3 text-center text-xs text-slate-400 bg-slate-50 rounded-xl">
+                    No exact match found. Please choose an active partner below.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {staffRecommendations.slice(0, 4).map((emp: any) => {
+                      const isSelected = collectionStaff === emp.fullName || selectedStaffId === emp._id;
+                      return (
+                        <div
+                          key={emp._id}
+                          onClick={() => {
+                            setSelectedStaffId(emp._id);
+                            setCollectionStaff(emp.fullName);
+                            setCollectionNotes(
+                              `Assigned to ${emp.fullName} (${emp.district} Hub - ${emp.phone}) for doorstep pickup`
+                            );
+                          }}
+                          className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-amber-50/80 border-amber-500 shadow-sm ring-1 ring-amber-500'
+                              : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className="font-bold text-slate-900 truncate">{emp.fullName}</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700">
+                                {emp.employeeCode}
+                              </span>
+                              <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
+                                {emp.matchBadge}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                              <span>📍 {emp.district} Hub</span>
+                              <span>•</span>
+                              <span>📞 {emp.phone}</span>
+                              <span>•</span>
+                              <span className="flex items-center gap-0.5 text-amber-600 font-bold">
+                                <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                                {emp.rating?.toFixed(1) || '5.0'}
+                              </span>
+                            </div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center flex-shrink-0">
+                              <Check className="w-3.5 h-3.5" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Staff Selector / Manual Override */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Selected Collection Staff</label>
+                <input
+                  type="text"
+                  value={collectionStaff}
+                  onChange={(e) => setCollectionStaff(e.target.value)}
+                  placeholder="Enter or select executive name"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                />
+              </div>
+
+              {/* Pickup Date & Slot */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Scheduled Pickup Date</label>
+                  <input
+                    type="date"
+                    value={collectionDate}
+                    onChange={(e) => setCollectionDate(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Preferred Time Window</label>
+                  <select
+                    value={collectionSlot}
+                    onChange={(e) => setCollectionSlot(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50"
+                  >
+                    <option>Morning (10:00 AM - 01:00 PM)</option>
+                    <option>Afternoon (02:00 PM - 05:00 PM)</option>
+                    <option>Evening (05:00 PM - 08:00 PM)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Logistics Notes</label>
+                <textarea
+                  value={collectionNotes}
+                  onChange={(e) => setCollectionNotes(e.target.value)}
+                  placeholder="Call customer 30 minutes before arrival"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs text-slate-800 bg-slate-50"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setActiveModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAssignCollection}
-                className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded"
+                disabled={mutation.isPending || !collectionStaff.trim()}
+                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition-colors"
               >
-                Confirm Assignment
+                {mutation.isPending ? 'Assigning...' : 'Confirm Assignment'}
               </button>
             </div>
           </div>

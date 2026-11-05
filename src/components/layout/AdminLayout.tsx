@@ -14,6 +14,7 @@ import {
   Receipt,
   Flame,
   ShoppingBag,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -24,6 +25,7 @@ export const AdminLayout: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Overview', icon: LayoutDashboard },
     { to: '/requests', label: 'Buyback Requests', icon: Inbox },
+    { to: '/employees', label: 'Employee Management', icon: Users },
     { to: '/catalogue', label: 'Selling Models (Buyback)', icon: Smartphone },
     { to: '/buy-inventory', label: 'Buy Phones (Certified Store)', icon: ShoppingBag },
     { to: '/pricing', label: 'Pricing Engine', icon: Tag },
