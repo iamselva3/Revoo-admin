@@ -114,12 +114,16 @@ export const PopupsPage: React.FC = () => {
       alert('Launch popup configuration saved successfully and published to the live mobile app!');
     },
     onError: (err: any) => {
+      if (err.response?.status === 413) {
+        alert('Image payload too large (413). Please choose a smaller image or enter a direct web image link.');
+        return;
+      }
       const msg = err.response?.data?.message || err.message || 'Error saving popup.';
       alert(`Error saving popup (${err.response?.status || '500'}): ${msg}`);
     },
   });
 
-  // Client-side image compression: converts any high-res camera photo (8MB+) to an optimized mobile web banner (~120KB)
+  // Client-side image compression: converts any high-res camera photo (8MB+) to an ultra-optimized mobile web poster (~30KB)
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -127,7 +131,7 @@ export const PopupsPage: React.FC = () => {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const maxDim = 1000;
+          const maxDim = 600;
           let w = img.width;
           let h = img.height;
           if (w > maxDim || h > maxDim) {
@@ -143,13 +147,44 @@ export const PopupsPage: React.FC = () => {
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          resolve(canvas.toDataURL('image/jpeg', 0.65));
         };
         img.onerror = reject;
         img.src = e.target?.result as string;
       };
       reader.onerror = reject;
       reader.readAsDataURL(file);
+    });
+  };
+
+  const compressDataUrl = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!dataUrl.startsWith('data:image/') || dataUrl.length < 100000) {
+        return resolve(dataUrl);
+      }
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 600;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.65));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
     });
   };
 
@@ -168,10 +203,10 @@ export const PopupsPage: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     const nextState = !isEnabled;
     setIsEnabled(nextState);
-    // Instant save when toggling status
+    const optimizedImage = await compressDataUrl(imageUrl);
     savePopupMutation.mutate({
       isEnabled: nextState,
       tag,
@@ -180,14 +215,15 @@ export const PopupsPage: React.FC = () => {
       badge,
       color1,
       color2,
-      imageUrl,
+      imageUrl: optimizedImage,
       popupActionText,
       popupActionUrl,
     });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const optimizedImage = await compressDataUrl(imageUrl);
     savePopupMutation.mutate({
       isEnabled,
       tag,
@@ -196,7 +232,7 @@ export const PopupsPage: React.FC = () => {
       badge,
       color1,
       color2,
-      imageUrl,
+      imageUrl: optimizedImage,
       popupActionText,
       popupActionUrl,
     });
