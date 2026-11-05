@@ -1022,3 +1022,4 @@ export const BuyPhonesPage: React.FC = () => {
     </div>
   );
 };
+
