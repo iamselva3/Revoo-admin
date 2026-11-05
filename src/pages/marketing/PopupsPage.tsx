@@ -34,12 +34,31 @@ export const PopupsPage: React.FC = () => {
 
   const { data: popupData, isLoading } = useQuery({
     queryKey: ['admin-popup'],
-    queryFn: async () => (await apiClient.get('/catalogue/admin/popup')).data.data,
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get('/catalogue/admin/popup');
+        return res.data.data;
+      } catch (e: any) {
+        // Resilient fallback: read from live /catalogue/admin/banners
+        try {
+          const res = await apiClient.get('/catalogue/admin/banners');
+          const banners = res.data.data as any[];
+          const popup = banners.find((b) => b.isPopupModal === true);
+          if (popup) {
+            return {
+              ...popup,
+              isEnabled: popup.isActive !== false,
+            };
+          }
+        } catch (_) {}
+        return null;
+      }
+    },
   });
 
   useEffect(() => {
     if (popupData) {
-      setIsEnabled(popupData.isEnabled === true);
+      setIsEnabled(popupData.isEnabled === true || (popupData.isPopupModal === true && popupData.isActive !== false));
       if (popupData.tag) setTag(popupData.tag);
       if (popupData.title) setTitle(popupData.title);
       if (popupData.subtitle) setSubtitle(popupData.subtitle);
@@ -54,7 +73,40 @@ export const PopupsPage: React.FC = () => {
 
   const savePopupMutation = useMutation({
     mutationFn: async (payload: any) => {
-      return (await apiClient.post('/catalogue/admin/popup', payload)).data;
+      try {
+        return (await apiClient.post('/catalogue/admin/popup', payload)).data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          // Automatic seamless fallback to live /catalogue/admin/banners
+          const bannersRes = await apiClient.get('/catalogue/admin/banners');
+          const banners = bannersRes.data.data as any[];
+          const existingPopup = banners.find((b) => b.isPopupModal === true);
+
+          const bannerPayload = {
+            tag: payload.tag || 'LIVE SALE',
+            title: payload.title || 'Special Sale',
+            subtitle: payload.subtitle || '',
+            badge: payload.badge || 'Featured',
+            color1: payload.color1 || '#059669',
+            color2: payload.color2 || '#022C22',
+            icon: 'local_fire_department',
+            imageUrl: payload.imageUrl || '',
+            linkUrl: payload.popupActionUrl || '/buy',
+            isPopupModal: true,
+            popupActionText: payload.popupActionText || 'BUY NOW',
+            popupActionUrl: payload.popupActionUrl || '/buy',
+            isActive: payload.isEnabled,
+            displayOrder: 0,
+          };
+
+          if (existingPopup) {
+            return (await apiClient.put(`/catalogue/admin/banners/${existingPopup._id}`, bannerPayload)).data;
+          } else {
+            return (await apiClient.post('/catalogue/admin/banners', bannerPayload)).data;
+          }
+        }
+        throw err;
+      }
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['admin-popup'] });
