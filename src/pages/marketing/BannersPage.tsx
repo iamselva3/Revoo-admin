@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Sparkles, Smartphone, Eye, Flame, ShoppingBag } from 'lucide-react';
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Sparkles, Smartphone, Eye, Flame, ShoppingBag, Upload, X } from 'lucide-react';
 import { apiClient } from '../../api/client';
 
 interface Banner {
@@ -111,6 +111,17 @@ export const BannersPage: React.FC = () => {
       displayOrder: banner.displayOrder,
     });
     setIsModalOpen(true);
+  };
+
+  const handleBannerImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormValues((prev) => ({ ...prev, imageUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -229,81 +240,123 @@ export const BannersPage: React.FC = () => {
 
       {/* Edit / Add Modal with Live Mobile Preview */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+        <div className="fixed inset-0 z-50 flex justify-center items-start sm:items-center bg-black/60 p-3 sm:p-6 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 my-auto max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 bg-white sticky top-0 z-10">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   {editingBanner ? 'Edit Promotional Banner / Popup' : 'Create New Promotional Banner'}
                 </h2>
                 <p className="text-xs text-slate-500">Configure visual style and view instant live mobile preview.</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <XCircle className="w-5 h-5" />
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Form Controls (7 cols) */}
-              <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-3.5">
-                <div className="grid grid-cols-2 gap-3">
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* Form Controls (7 cols) */}
+                <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-3.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Pill Tag</label>
+                      <input
+                        type="text"
+                        value={formValues.tag}
+                        onChange={(e) => setFormValues({ ...formValues, tag: e.target.value })}
+                        className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
+                        placeholder="e.g. FLASH OFFER"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Badge Text</label>
+                      <input
+                        type="text"
+                        value={formValues.badge}
+                        onChange={(e) => setFormValues({ ...formValues, badge: e.target.value })}
+                        className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
+                        placeholder="e.g. Verified Payout"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Pill Tag</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Banner Title</label>
                     <input
                       type="text"
-                      value={formValues.tag}
-                      onChange={(e) => setFormValues({ ...formValues, tag: e.target.value })}
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
-                      placeholder="e.g. FLASH OFFER"
+                      value={formValues.title}
+                      onChange={(e) => setFormValues({ ...formValues, title: e.target.value })}
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg font-medium"
+                      placeholder="e.g. Sell Old Phone at Highest Price"
                       required
                     />
                   </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Badge Text</label>
-                    <input
-                      type="text"
-                      value={formValues.badge}
-                      onChange={(e) => setFormValues({ ...formValues, badge: e.target.value })}
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Subtitle / Promo Details</label>
+                    <textarea
+                      value={formValues.subtitle}
+                      onChange={(e) => setFormValues({ ...formValues, subtitle: e.target.value })}
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
-                      placeholder="e.g. Verified Payout"
+                      rows={2}
+                      placeholder="e.g. Instant cash at doorstep with zero wear deductions"
+                      required
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Banner Title</label>
-                  <input
-                    type="text"
-                    value={formValues.title}
-                    onChange={(e) => setFormValues({ ...formValues, title: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg font-medium"
-                    placeholder="e.g. Sell Old Phone at Highest Price"
-                    required
-                  />
-                </div>
+                  {/* Banner Image Upload & Preview */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Banner Image / Poster</label>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Subtitle / Promo Details</label>
-                  <textarea
-                    value={formValues.subtitle}
-                    onChange={(e) => setFormValues({ ...formValues, subtitle: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
-                    rows={2}
-                    placeholder="e.g. Instant cash at doorstep with zero wear deductions"
-                    required
-                  />
-                </div>
+                    {formValues.imageUrl && (
+                      <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                        <div className="w-14 h-10 rounded bg-white border border-slate-200 overflow-hidden shrink-0">
+                          <img src={formValues.imageUrl} alt="banner" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          <span className="text-xs text-slate-700 font-medium block truncate">Banner Photo Loaded</span>
+                          <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Live in mobile app
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormValues({ ...formValues, imageUrl: '' })}
+                          className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Banner Image URL (Optional)</label>
-                  <input
-                    type="url"
-                    value={formValues.imageUrl}
-                    onChange={(e) => setFormValues({ ...formValues, imageUrl: e.target.value })}
-                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
-                    placeholder="https://... (Full width mobile banner image)"
-                  />
-                </div>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition">
+                        <Upload className="w-4 h-4 text-slate-600" />
+                        <span>Upload Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleBannerImageUpload}
+                        />
+                      </label>
+                      <span className="text-xs text-slate-400">or enter image URL below</span>
+                    </div>
+
+                    <input
+                      type="url"
+                      value={formValues.imageUrl}
+                      onChange={(e) => setFormValues({ ...formValues, imageUrl: e.target.value })}
+                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
+                      placeholder="https://... or click Upload Photo above"
+                    />
+                  </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -506,6 +559,7 @@ export const BannersPage: React.FC = () => {
                   {/* Bottom bar */}
                   <div className="w-24 h-1 bg-slate-700 rounded-full mx-auto mt-4" />
                 </div>
+              </div>
               </div>
             </div>
           </div>

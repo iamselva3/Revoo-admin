@@ -11,6 +11,7 @@ import {
   UserCheck,
   Layers,
   Image,
+  Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -24,6 +25,7 @@ export const AdminLayout: React.FC = () => {
     { to: '/catalogue', label: 'Phone Catalogue', icon: Smartphone },
     { to: '/pricing', label: 'Pricing Engine', icon: Tag },
     { to: '/banners', label: 'Banners & Offers', icon: Image },
+    { to: '/invoices', label: 'Invoices & Orders', icon: Receipt },
     { to: '/enquiries', label: 'Customer Support', icon: HelpCircle },
     { to: '/audits', label: 'Audit Trail', icon: ShieldAlert },
   ];
