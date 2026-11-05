@@ -131,7 +131,15 @@ export const BuyPhonesPage: React.FC = () => {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
-      return (await apiClient.put(`/catalogue/admin/refurbished/${id}`, payload)).data;
+      try {
+        return (await apiClient.put(`/catalogue/admin/refurbished/${id}`, payload)).data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          // Fallback to post alias
+          return (await apiClient.post(`/catalogue/admin/refurbished/${id}/update`, payload)).data;
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-refurbished'] });
@@ -146,10 +154,13 @@ export const BuyPhonesPage: React.FC = () => {
       });
     },
     onError: (err: any) => {
+      const is404 = err.response?.status === 404;
       setModalAlert({
         isOpen: true,
-        title: 'Update Failed',
-        message: err.response?.data?.message || err.message || 'Server error',
+        title: is404 ? 'Render Deploy Required' : 'Update Failed',
+        message: is404
+          ? 'The update API endpoint has been pushed to GitHub main. Please go to your Render dashboard (dashboard.render.com -> revoo-backend-ivqq) and click "Manual Deploy" -> "Deploy latest commit" to activate the new endpoints.'
+          : (err.response?.data?.message || err.message || 'Server error'),
         type: 'error',
       });
     },
@@ -158,7 +169,14 @@ export const BuyPhonesPage: React.FC = () => {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return (await apiClient.delete(`/catalogue/admin/refurbished/${id}`)).data;
+      try {
+        return (await apiClient.delete(`/catalogue/admin/refurbished/${id}`)).data;
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          return (await apiClient.post(`/catalogue/admin/refurbished/${id}/delete`)).data;
+        }
+        throw err;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-refurbished'] });
@@ -171,10 +189,13 @@ export const BuyPhonesPage: React.FC = () => {
       });
     },
     onError: (err: any) => {
+      const is404 = err.response?.status === 404;
       setModalAlert({
         isOpen: true,
-        title: 'Delete Failed',
-        message: err.response?.data?.message || err.message || 'Server error',
+        title: is404 ? 'Render Deploy Required' : 'Delete Failed',
+        message: is404
+          ? 'The delete API endpoint has been pushed to GitHub main. Please go to your Render dashboard (dashboard.render.com -> revoo-backend-ivqq) and click "Manual Deploy" -> "Deploy latest commit" to activate the new endpoints.'
+          : (err.response?.data?.message || err.message || 'Server error'),
         type: 'error',
       });
     },
