@@ -9,6 +9,7 @@ import { ModelsPage } from './pages/catalogue/ModelsPage';
 import { BrandsPage } from './pages/catalogue/BrandsPage';
 import { PricingPage } from './pages/pricing/PricingPage';
 import { BannersPage } from './pages/marketing/BannersPage';
+import { PopupsPage } from './pages/marketing/PopupsPage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { EnquiriesPage } from './pages/enquiries/EnquiriesPage';
 import { AuditLogsPage } from './pages/dashboard/AuditLogsPage';
@@ -52,6 +53,7 @@ export const App: React.FC = () => {
         <Route path="catalogue/brands" element={<BrandsPage />} />
         <Route path="pricing" element={<PricingPage />} />
         <Route path="banners" element={<BannersPage />} />
+        <Route path="popups" element={<PopupsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="enquiries" element={<EnquiriesPage />} />
         <Route path="audits" element={<AuditLogsPage />} />
