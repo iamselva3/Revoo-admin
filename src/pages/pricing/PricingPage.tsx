@@ -123,32 +123,39 @@ export const PricingPage: React.FC = () => {
   // Local form state
   const [basePrice, setBasePrice] = useState<number>(0);
   const [storageAdj, setStorageAdj] = useState<number>(0);
-  const [displayDeductions, setDisplayDeductions] = useState({
+
+  // Percentage deduction states (Percentage from base model price)
+  const [displayPercentages, setDisplayPercentages] = useState<Record<string, number>>({
     FLAWLESS: 0,
-    MINOR_SCRATCHES: 1000,
-    DEEP_SCRATCHES: 2500,
-    CRACKED_GLASS: 4500,
-    BROKEN_OR_DEAD_PIXELS: 7000,
+    MINOR_SCRATCHES: 8,
+    DEEP_SCRATCHES: 15,
+    CRACKED_GLASS: 30,
+    BROKEN_OR_DEAD_PIXELS: 50,
   });
-  const [bodyDeductions, setBodyDeductions] = useState({
+
+  const [bodyPercentages, setBodyPercentages] = useState<Record<string, number>>({
     FLAWLESS: 0,
-    MINOR_SIGNS_OF_USE: 500,
-    DENTED_OR_SCRATCHED: 1500,
-    BENT_OR_CRACKED_BACK: 3500,
+    MINOR_SIGNS_OF_USE: 4,
+    DENTED_OR_SCRATCHED: 10,
+    BENT_OR_CRACKED_BACK: 20,
   });
-  const [batteryDeductions, setBatteryDeductions] = useState({
+
+  const [batteryPercentages, setBatteryPercentages] = useState<Record<string, number>>({
     EXCELLENT: 0,
-    GOOD: 800,
-    DEGRADED: 2000,
+    GOOD: 5,
+    DEGRADED: 10,
   });
-  const [functionalDeductions, setFunctionalDeductions] = useState({
-    frontCameraFaulty: 1500,
-    backCameraFaulty: 2500,
-    faceIdOrFingerprintFaulty: 2000,
-    speakerOrMicFaulty: 1000,
-    chargingPortFaulty: 1200,
-    wirelessOrBluetoothFaulty: 1500,
+
+  const [functionalPercentages, setFunctionalPercentages] = useState<Record<string, number>>({
+    frontCameraFaulty: 8,
+    backCameraFaulty: 12,
+    faceIdOrFingerprintFaulty: 10,
+    speakerOrMicFaulty: 5,
+    chargingPortFaulty: 6,
+    wirelessOrBluetoothFaulty: 7,
   });
+
+  // Accessories Bonus stays as direct price tag (₹)
   const [accessoriesBonus, setAccessoriesBonus] = useState({
     hasOriginalBox: 500,
     hasOriginalCharger: 500,
@@ -156,13 +163,57 @@ export const PricingPage: React.FC = () => {
 
   useEffect(() => {
     if (pricingRule) {
-      setBasePrice(pricingRule.basePrice);
+      const bp = pricingRule.basePrice || 0;
+      setBasePrice(bp);
       setStorageAdj(pricingRule.storagePriceAdjustment || 0);
-      if (pricingRule.deductions?.display) setDisplayDeductions(pricingRule.deductions.display);
-      if (pricingRule.deductions?.body) setBodyDeductions(pricingRule.deductions.body);
-      if (pricingRule.deductions?.battery) setBatteryDeductions(pricingRule.deductions.battery);
-      if (pricingRule.deductions?.functional) setFunctionalDeductions(pricingRule.deductions.functional);
-      if (pricingRule.deductions?.accessoriesBonus) setAccessoriesBonus(pricingRule.deductions.accessoriesBonus);
+
+      // Helper to retrieve percentage or compute from existing amount and basePrice
+      const getPct = (pctVal: number | undefined, absVal: number | undefined, defaultPct: number) => {
+        if (pctVal !== undefined && pctVal !== null && !isNaN(Number(pctVal))) {
+          return Number(pctVal);
+        }
+        if (absVal !== undefined && absVal !== null && bp > 0) {
+          return Number(((Number(absVal) / bp) * 100).toFixed(1));
+        }
+        return defaultPct;
+      };
+
+      const dp = pricingRule.deductionPercentages;
+      const d = pricingRule.deductions;
+
+      setDisplayPercentages({
+        FLAWLESS: getPct(dp?.display?.FLAWLESS, d?.display?.FLAWLESS, 0),
+        MINOR_SCRATCHES: getPct(dp?.display?.MINOR_SCRATCHES, d?.display?.MINOR_SCRATCHES, 8),
+        DEEP_SCRATCHES: getPct(dp?.display?.DEEP_SCRATCHES, d?.display?.DEEP_SCRATCHES, 15),
+        CRACKED_GLASS: getPct(dp?.display?.CRACKED_GLASS, d?.display?.CRACKED_GLASS, 30),
+        BROKEN_OR_DEAD_PIXELS: getPct(dp?.display?.BROKEN_OR_DEAD_PIXELS, d?.display?.BROKEN_OR_DEAD_PIXELS, 50),
+      });
+
+      setBodyPercentages({
+        FLAWLESS: getPct(dp?.body?.FLAWLESS, d?.body?.FLAWLESS, 0),
+        MINOR_SIGNS_OF_USE: getPct(dp?.body?.MINOR_SIGNS_OF_USE, d?.body?.MINOR_SIGNS_OF_USE, 4),
+        DENTED_OR_SCRATCHED: getPct(dp?.body?.DENTED_OR_SCRATCHED, d?.body?.DENTED_OR_SCRATCHED, 10),
+        BENT_OR_CRACKED_BACK: getPct(dp?.body?.BENT_OR_CRACKED_BACK, d?.body?.BENT_OR_CRACKED_BACK, 20),
+      });
+
+      setBatteryPercentages({
+        EXCELLENT: getPct(dp?.battery?.EXCELLENT, d?.battery?.EXCELLENT, 0),
+        GOOD: getPct(dp?.battery?.GOOD, d?.battery?.GOOD, 5),
+        DEGRADED: getPct(dp?.battery?.DEGRADED, d?.battery?.DEGRADED, 10),
+      });
+
+      setFunctionalPercentages({
+        frontCameraFaulty: getPct(dp?.functional?.frontCameraFaulty, d?.functional?.frontCameraFaulty, 8),
+        backCameraFaulty: getPct(dp?.functional?.backCameraFaulty, d?.functional?.backCameraFaulty, 12),
+        faceIdOrFingerprintFaulty: getPct(dp?.functional?.faceIdOrFingerprintFaulty, d?.functional?.faceIdOrFingerprintFaulty, 10),
+        speakerOrMicFaulty: getPct(dp?.functional?.speakerOrMicFaulty, d?.functional?.speakerOrMicFaulty, 5),
+        chargingPortFaulty: getPct(dp?.functional?.chargingPortFaulty, d?.functional?.chargingPortFaulty, 6),
+        wirelessOrBluetoothFaulty: getPct(dp?.functional?.wirelessOrBluetoothFaulty, d?.functional?.wirelessOrBluetoothFaulty, 7),
+      });
+
+      if (pricingRule.deductions?.accessoriesBonus) {
+        setAccessoriesBonus(pricingRule.deductions.accessoriesBonus);
+      }
     } else if (selectedModel) {
       setBasePrice(selectedModel.basePrice || 45000);
       setStorageAdj(0);
@@ -184,17 +235,51 @@ export const PricingPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Calculate exact rupee deduction from base price and percentage
+    const calcRupee = (pct: number) => Math.round((basePrice * (Number(pct) || 0)) / 100);
+
+    const calculatedDeductions = {
+      display: {
+        FLAWLESS: calcRupee(displayPercentages.FLAWLESS),
+        MINOR_SCRATCHES: calcRupee(displayPercentages.MINOR_SCRATCHES),
+        DEEP_SCRATCHES: calcRupee(displayPercentages.DEEP_SCRATCHES),
+        CRACKED_GLASS: calcRupee(displayPercentages.CRACKED_GLASS),
+        BROKEN_OR_DEAD_PIXELS: calcRupee(displayPercentages.BROKEN_OR_DEAD_PIXELS),
+      },
+      body: {
+        FLAWLESS: calcRupee(bodyPercentages.FLAWLESS),
+        MINOR_SIGNS_OF_USE: calcRupee(bodyPercentages.MINOR_SIGNS_OF_USE),
+        DENTED_OR_SCRATCHED: calcRupee(bodyPercentages.DENTED_OR_SCRATCHED),
+        BENT_OR_CRACKED_BACK: calcRupee(bodyPercentages.BENT_OR_CRACKED_BACK),
+      },
+      battery: {
+        EXCELLENT: calcRupee(batteryPercentages.EXCELLENT),
+        GOOD: calcRupee(batteryPercentages.GOOD),
+        DEGRADED: calcRupee(batteryPercentages.DEGRADED),
+      },
+      functional: {
+        frontCameraFaulty: calcRupee(functionalPercentages.frontCameraFaulty),
+        backCameraFaulty: calcRupee(functionalPercentages.backCameraFaulty),
+        faceIdOrFingerprintFaulty: calcRupee(functionalPercentages.faceIdOrFingerprintFaulty),
+        speakerOrMicFaulty: calcRupee(functionalPercentages.speakerOrMicFaulty),
+        chargingPortFaulty: calcRupee(functionalPercentages.chargingPortFaulty),
+        wirelessOrBluetoothFaulty: calcRupee(functionalPercentages.wirelessOrBluetoothFaulty),
+      },
+      accessoriesBonus,
+    };
+
     updateMutation.mutate({
       basePrice,
       storagePriceAdjustment: storageAdj,
-      deductions: {
-        display: displayDeductions,
-        body: bodyDeductions,
-        battery: batteryDeductions,
-        functional: functionalDeductions,
-        accessoriesBonus,
+      deductions: calculatedDeductions,
+      deductionPercentages: {
+        display: displayPercentages,
+        body: bodyPercentages,
+        battery: batteryPercentages,
+        functional: functionalPercentages,
       },
-      reasonForChange: reasonForChange || 'Scheduled market valuation adjustment',
+      reasonForChange: reasonForChange || 'Percentage-based valuation adjustment',
     });
   };
 
@@ -382,80 +467,184 @@ export const PricingPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Display Damage */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Display Damage Deductions (₹)
-            </h3>
-            {Object.entries(displayDeductions).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
-                <input
-                  type="number"
-                  value={val}
-                  onChange={(e) =>
-                    setDisplayDeductions({ ...displayDeductions, [key]: Number(e.target.value) })
-                  }
-                  className="w-28 p-1.5 border border-slate-300 rounded text-right font-mono font-bold"
-                />
-              </div>
-            ))}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Display Damage Deductions
+              </h3>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                % of Base • Auto ₹
+              </span>
+            </div>
+            {Object.entries(displayPercentages).map(([key, pct]) => {
+              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              return (
+                <div key={key} className="flex items-center justify-between text-xs py-1">
+                  <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
+                  <div className="flex items-center gap-2">
+                    {/* Editable Percentage Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="any"
+                        value={pct}
+                        onChange={(e) =>
+                          setDisplayPercentages({
+                            ...displayPercentages,
+                            [key]: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                      />
+                      <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
+                    </div>
+
+                    {/* Grey Non-Editable Calculated Price */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                        title="Auto-calculated from base price"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Body Damage */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Body / Frame Deductions (₹)
-            </h3>
-            {Object.entries(bodyDeductions).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
-                <input
-                  type="number"
-                  value={val}
-                  onChange={(e) =>
-                    setBodyDeductions({ ...bodyDeductions, [key]: Number(e.target.value) })
-                  }
-                  className="w-28 p-1.5 border border-slate-300 rounded text-right font-mono font-bold"
-                />
-              </div>
-            ))}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Body / Frame Deductions
+              </h3>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                % of Base • Auto ₹
+              </span>
+            </div>
+            {Object.entries(bodyPercentages).map(([key, pct]) => {
+              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              return (
+                <div key={key} className="flex items-center justify-between text-xs py-1">
+                  <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
+                  <div className="flex items-center gap-2">
+                    {/* Editable Percentage Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="any"
+                        value={pct}
+                        onChange={(e) =>
+                          setBodyPercentages({
+                            ...bodyPercentages,
+                            [key]: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                      />
+                      <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
+                    </div>
+
+                    {/* Grey Non-Editable Calculated Price */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                        title="Auto-calculated from base price"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Battery Health */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Battery Health Deductions (₹)
-            </h3>
-            {Object.entries(batteryDeductions).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">{key}</span>
-                <input
-                  type="number"
-                  value={val}
-                  onChange={(e) =>
-                    setBatteryDeductions({ ...batteryDeductions, [key]: Number(e.target.value) })
-                  }
-                  className="w-28 p-1.5 border border-slate-300 rounded text-right font-mono font-bold"
-                />
-              </div>
-            ))}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Battery Health Deductions
+              </h3>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                % of Base • Auto ₹
+              </span>
+            </div>
+            {Object.entries(batteryPercentages).map(([key, pct]) => {
+              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              return (
+                <div key={key} className="flex items-center justify-between text-xs py-1">
+                  <span className="text-slate-600 font-medium">{key}</span>
+                  <div className="flex items-center gap-2">
+                    {/* Editable Percentage Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="any"
+                        value={pct}
+                        onChange={(e) =>
+                          setBatteryPercentages({
+                            ...batteryPercentages,
+                            [key]: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                      />
+                      <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
+                    </div>
+
+                    {/* Grey Non-Editable Calculated Price */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                        title="Auto-calculated from base price"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Accessories Bonus */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-              Original Accessories Bonus (+₹)
-            </h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="text-sm font-bold text-slate-900">
+                Original Accessories Bonus (+₹)
+              </h3>
+              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                Fixed Cash Bonus (+₹)
+              </span>
+            </div>
             {Object.entries(accessoriesBonus).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between text-xs">
+              <div key={key} className="flex items-center justify-between text-xs py-1">
                 <span className="text-slate-600 font-medium">{key.replace(/([A-Z])/g, ' $1')}</span>
-                <input
-                  type="number"
-                  value={val}
-                  onChange={(e) =>
-                    setAccessoriesBonus({ ...accessoriesBonus, [key]: Number(e.target.value) })
-                  }
-                  className="w-28 p-1.5 border border-slate-300 rounded text-right font-mono font-bold text-green-700"
-                />
+                <div className="relative flex items-center">
+                  <span className="absolute left-2 text-emerald-600 font-bold text-xs pointer-events-none">+₹</span>
+                  <input
+                    type="number"
+                    value={val}
+                    onChange={(e) =>
+                      setAccessoriesBonus({ ...accessoriesBonus, [key]: Number(e.target.value) || 0 })
+                    }
+                    className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-emerald-700 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -463,23 +652,55 @@ export const PricingPage: React.FC = () => {
 
         {/* Functional Faults Deductions */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-            Hardware & Component Fault Deductions (₹)
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-            {Object.entries(functionalDeductions).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-100">
-                <span className="text-slate-700 font-medium">{key.replace(/([A-Z])/g, ' $1')}</span>
-                <input
-                  type="number"
-                  value={val}
-                  onChange={(e) =>
-                    setFunctionalDeductions({ ...functionalDeductions, [key]: Number(e.target.value) })
-                  }
-                  className="w-20 p-1 border border-slate-300 rounded text-right font-mono font-bold"
-                />
-              </div>
-            ))}
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-slate-900">
+              Hardware & Component Fault Deductions
+            </h3>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              % of Base • Auto ₹
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            {Object.entries(functionalPercentages).map(([key, pct]) => {
+              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              return (
+                <div key={key} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-slate-700 font-medium text-xs pr-2">{key.replace(/([A-Z])/g, ' $1')}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Editable Percentage Input */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="any"
+                        value={pct}
+                        onChange={(e) =>
+                          setFunctionalPercentages({
+                            ...functionalPercentages,
+                            [key]: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="w-14 p-1.5 pr-3.5 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                      />
+                      <span className="absolute right-1 text-slate-400 font-bold text-[9px] pointer-events-none">%</span>
+                    </div>
+
+                    {/* Grey Non-Editable Calculated Price */}
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        disabled
+                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                        className="w-20 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-[11px] text-slate-500 cursor-not-allowed select-none"
+                        title="Auto-calculated from base price"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
