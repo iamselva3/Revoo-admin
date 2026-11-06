@@ -120,12 +120,24 @@ export const PricingPage: React.FC = () => {
     enabled: !!selectedModelId,
   });
 
-  // Local form state
-  const [basePrice, setBasePrice] = useState<number>(0);
-  const [storageAdj, setStorageAdj] = useState<number>(0);
+  // Helper to sanitize numeric/decimal input, allow empty strings during typing, and strip leading zeros
+  const cleanNumberInput = (rawVal: string, max?: number): string | number => {
+    if (rawVal === '') return '';
+    // Strip leading zeros unless it is just "0" or decimal "0."
+    let cleaned = rawVal.replace(/^0+(?=\d)/, '');
+    if (max !== undefined) {
+      const num = parseFloat(cleaned);
+      if (!isNaN(num) && num > max) cleaned = String(max);
+    }
+    return cleaned;
+  };
+
+  // Local form state (allows number or string for fluid typing and complete backspace erasing)
+  const [basePrice, setBasePrice] = useState<number | string>(0);
+  const [storageAdj, setStorageAdj] = useState<number | string>(0);
 
   // Percentage deduction states (Percentage from base model price)
-  const [displayPercentages, setDisplayPercentages] = useState<Record<string, number>>({
+  const [displayPercentages, setDisplayPercentages] = useState<Record<string, number | string>>({
     FLAWLESS: 0,
     MINOR_SCRATCHES: 8,
     DEEP_SCRATCHES: 15,
@@ -133,20 +145,20 @@ export const PricingPage: React.FC = () => {
     BROKEN_OR_DEAD_PIXELS: 50,
   });
 
-  const [bodyPercentages, setBodyPercentages] = useState<Record<string, number>>({
+  const [bodyPercentages, setBodyPercentages] = useState<Record<string, number | string>>({
     FLAWLESS: 0,
     MINOR_SIGNS_OF_USE: 4,
     DENTED_OR_SCRATCHED: 10,
     BENT_OR_CRACKED_BACK: 20,
   });
 
-  const [batteryPercentages, setBatteryPercentages] = useState<Record<string, number>>({
+  const [batteryPercentages, setBatteryPercentages] = useState<Record<string, number | string>>({
     EXCELLENT: 0,
     GOOD: 5,
     DEGRADED: 10,
   });
 
-  const [functionalPercentages, setFunctionalPercentages] = useState<Record<string, number>>({
+  const [functionalPercentages, setFunctionalPercentages] = useState<Record<string, number | string>>({
     frontCameraFaulty: 8,
     backCameraFaulty: 12,
     faceIdOrFingerprintFaulty: 10,
@@ -156,7 +168,7 @@ export const PricingPage: React.FC = () => {
   });
 
   // Accessories Bonus stays as direct price tag (₹)
-  const [accessoriesBonus, setAccessoriesBonus] = useState({
+  const [accessoriesBonus, setAccessoriesBonus] = useState<Record<string, number | string>>({
     hasOriginalBox: 500,
     hasOriginalCharger: 500,
   });
@@ -236,8 +248,11 @@ export const PricingPage: React.FC = () => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const numericBasePrice = Number(basePrice) || 0;
+    const numericStorageAdj = Number(storageAdj) || 0;
+
     // Calculate exact rupee deduction from base price and percentage
-    const calcRupee = (pct: number) => Math.round((basePrice * (Number(pct) || 0)) / 100);
+    const calcRupee = (pct: number | string) => Math.round((numericBasePrice * (Number(pct) || 0)) / 100);
 
     const calculatedDeductions = {
       display: {
@@ -266,19 +281,46 @@ export const PricingPage: React.FC = () => {
         chargingPortFaulty: calcRupee(functionalPercentages.chargingPortFaulty),
         wirelessOrBluetoothFaulty: calcRupee(functionalPercentages.wirelessOrBluetoothFaulty),
       },
-      accessoriesBonus,
+      accessoriesBonus: {
+        hasOriginalBox: Number(accessoriesBonus.hasOriginalBox) || 0,
+        hasOriginalCharger: Number(accessoriesBonus.hasOriginalCharger) || 0,
+      },
+    };
+
+    const savedPercentages = {
+      display: {
+        FLAWLESS: Number(displayPercentages.FLAWLESS) || 0,
+        MINOR_SCRATCHES: Number(displayPercentages.MINOR_SCRATCHES) || 0,
+        DEEP_SCRATCHES: Number(displayPercentages.DEEP_SCRATCHES) || 0,
+        CRACKED_GLASS: Number(displayPercentages.CRACKED_GLASS) || 0,
+        BROKEN_OR_DEAD_PIXELS: Number(displayPercentages.BROKEN_OR_DEAD_PIXELS) || 0,
+      },
+      body: {
+        FLAWLESS: Number(bodyPercentages.FLAWLESS) || 0,
+        MINOR_SIGNS_OF_USE: Number(bodyPercentages.MINOR_SIGNS_OF_USE) || 0,
+        DENTED_OR_SCRATCHED: Number(bodyPercentages.DENTED_OR_SCRATCHED) || 0,
+        BENT_OR_CRACKED_BACK: Number(bodyPercentages.BENT_OR_CRACKED_BACK) || 0,
+      },
+      battery: {
+        EXCELLENT: Number(batteryPercentages.EXCELLENT) || 0,
+        GOOD: Number(batteryPercentages.GOOD) || 0,
+        DEGRADED: Number(batteryPercentages.DEGRADED) || 0,
+      },
+      functional: {
+        frontCameraFaulty: Number(functionalPercentages.frontCameraFaulty) || 0,
+        backCameraFaulty: Number(functionalPercentages.backCameraFaulty) || 0,
+        faceIdOrFingerprintFaulty: Number(functionalPercentages.faceIdOrFingerprintFaulty) || 0,
+        speakerOrMicFaulty: Number(functionalPercentages.speakerOrMicFaulty) || 0,
+        chargingPortFaulty: Number(functionalPercentages.chargingPortFaulty) || 0,
+        wirelessOrBluetoothFaulty: Number(functionalPercentages.wirelessOrBluetoothFaulty) || 0,
+      },
     };
 
     updateMutation.mutate({
-      basePrice,
-      storagePriceAdjustment: storageAdj,
+      basePrice: numericBasePrice,
+      storagePriceAdjustment: numericStorageAdj,
       deductions: calculatedDeductions,
-      deductionPercentages: {
-        display: displayPercentages,
-        body: bodyPercentages,
-        battery: batteryPercentages,
-        functional: functionalPercentages,
-      },
+      deductionPercentages: savedPercentages,
       reasonForChange: reasonForChange || 'Percentage-based valuation adjustment',
     });
   };
@@ -442,7 +484,11 @@ export const PricingPage: React.FC = () => {
               <input
                 type="number"
                 value={basePrice}
-                onChange={(e) => setBasePrice(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setBasePrice(cleanNumberInput(e.target.value))}
+                onBlur={() => {
+                  if (basePrice === '' || isNaN(Number(basePrice))) setBasePrice(0);
+                }}
                 className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-mono font-bold"
               />
               <span className="text-[10px] text-slate-400 mt-1 block">
@@ -456,7 +502,11 @@ export const PricingPage: React.FC = () => {
               <input
                 type="number"
                 value={storageAdj}
-                onChange={(e) => setStorageAdj(Number(e.target.value))}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setStorageAdj(cleanNumberInput(e.target.value))}
+                onBlur={() => {
+                  if (storageAdj === '' || isNaN(Number(storageAdj))) setStorageAdj(0);
+                }}
                 className="w-full p-2.5 border border-slate-300 rounded-lg text-sm font-mono font-bold"
               />
             </div>
@@ -476,7 +526,7 @@ export const PricingPage: React.FC = () => {
               </span>
             </div>
             {Object.entries(displayPercentages).map(([key, pct]) => {
-              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
                   <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
@@ -489,12 +539,18 @@ export const PricingPage: React.FC = () => {
                         max={100}
                         step="any"
                         value={pct}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setDisplayPercentages({
-                            ...displayPercentages,
-                            [key]: parseFloat(e.target.value) || 0,
-                          })
+                          setDisplayPercentages((prev) => ({
+                            ...prev,
+                            [key]: cleanNumberInput(e.target.value, 100),
+                          }))
                         }
+                        onBlur={() => {
+                          if (displayPercentages[key] === '' || isNaN(Number(displayPercentages[key]))) {
+                            setDisplayPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          }
+                        }}
                         className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
@@ -528,7 +584,7 @@ export const PricingPage: React.FC = () => {
               </span>
             </div>
             {Object.entries(bodyPercentages).map(([key, pct]) => {
-              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
                   <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
@@ -541,12 +597,18 @@ export const PricingPage: React.FC = () => {
                         max={100}
                         step="any"
                         value={pct}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setBodyPercentages({
-                            ...bodyPercentages,
-                            [key]: parseFloat(e.target.value) || 0,
-                          })
+                          setBodyPercentages((prev) => ({
+                            ...prev,
+                            [key]: cleanNumberInput(e.target.value, 100),
+                          }))
                         }
+                        onBlur={() => {
+                          if (bodyPercentages[key] === '' || isNaN(Number(bodyPercentages[key]))) {
+                            setBodyPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          }
+                        }}
                         className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
@@ -580,7 +642,7 @@ export const PricingPage: React.FC = () => {
               </span>
             </div>
             {Object.entries(batteryPercentages).map(([key, pct]) => {
-              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
                   <span className="text-slate-600 font-medium">{key}</span>
@@ -593,12 +655,18 @@ export const PricingPage: React.FC = () => {
                         max={100}
                         step="any"
                         value={pct}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setBatteryPercentages({
-                            ...batteryPercentages,
-                            [key]: parseFloat(e.target.value) || 0,
-                          })
+                          setBatteryPercentages((prev) => ({
+                            ...prev,
+                            [key]: cleanNumberInput(e.target.value, 100),
+                          }))
                         }
+                        onBlur={() => {
+                          if (batteryPercentages[key] === '' || isNaN(Number(batteryPercentages[key]))) {
+                            setBatteryPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          }
+                        }}
                         className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
@@ -639,9 +707,18 @@ export const PricingPage: React.FC = () => {
                   <input
                     type="number"
                     value={val}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
-                      setAccessoriesBonus({ ...accessoriesBonus, [key]: Number(e.target.value) || 0 })
+                      setAccessoriesBonus((prev) => ({
+                        ...prev,
+                        [key]: cleanNumberInput(e.target.value),
+                      }))
                     }
+                    onBlur={() => {
+                      if (accessoriesBonus[key] === '' || isNaN(Number(accessoriesBonus[key]))) {
+                        setAccessoriesBonus((prev) => ({ ...prev, [key]: 0 }));
+                      }
+                    }}
                     className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-emerald-700 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
@@ -662,7 +739,7 @@ export const PricingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             {Object.entries(functionalPercentages).map(([key, pct]) => {
-              const calcRupees = Math.round((basePrice * (Number(pct) || 0)) / 100);
+              const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
                   <span className="text-slate-700 font-medium text-xs pr-2">{key.replace(/([A-Z])/g, ' $1')}</span>
@@ -675,12 +752,18 @@ export const PricingPage: React.FC = () => {
                         max={100}
                         step="any"
                         value={pct}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setFunctionalPercentages({
-                            ...functionalPercentages,
-                            [key]: parseFloat(e.target.value) || 0,
-                          })
+                          setFunctionalPercentages((prev) => ({
+                            ...prev,
+                            [key]: cleanNumberInput(e.target.value, 100),
+                          }))
                         }
+                        onBlur={() => {
+                          if (functionalPercentages[key] === '' || isNaN(Number(functionalPercentages[key]))) {
+                            setFunctionalPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          }
+                        }}
                         className="w-14 p-1.5 pr-3.5 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[9px] pointer-events-none">%</span>
