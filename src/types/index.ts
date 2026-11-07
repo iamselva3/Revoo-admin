@@ -92,8 +92,62 @@ export interface PricingRule {
       hasOriginalBox: number;
       hasOriginalCharger: number;
     };
+    basicQuestions?: {
+      phoneNotWorking?: number;
+      touchscreenNotWorking?: number;
+      displayNotOriginal?: number;
+      noWarranty?: number;
+    };
+    backPanel?: {
+      NO_DEFECTS?: number;
+      MINOR_SCRATCHES?: number;
+      HEAVY_SCRATCHES?: number;
+      BACK_PANEL_BROKEN?: number;
+    };
+    sidePanel?: {
+      NO_DEFECTS?: number;
+      MINOR_DENT_OR_SCRATCHES?: number;
+      HEAVY_DENT?: number;
+      BENT_OR_BROKEN?: number;
+    };
+    hardwareFaults?: {
+      powerButtonNotWorking?: number;
+      volumeButtonNotWorking?: number;
+      chargingPortNotWorking?: number;
+      earSpeakerNotWorking?: number;
+      proximitySensorNotWorking?: number;
+      wifiOrBluetoothNotWorking?: number;
+      vibratorNotWorking?: number;
+    };
   };
   deductionPercentages?: {
+    basicQuestions?: {
+      phoneNotWorking?: number;
+      touchscreenNotWorking?: number;
+      displayNotOriginal?: number;
+      noWarranty?: number;
+    };
+    backPanel?: {
+      NO_DEFECTS?: number;
+      MINOR_SCRATCHES?: number;
+      HEAVY_SCRATCHES?: number;
+      BACK_PANEL_BROKEN?: number;
+    };
+    sidePanel?: {
+      NO_DEFECTS?: number;
+      MINOR_DENT_OR_SCRATCHES?: number;
+      HEAVY_DENT?: number;
+      BENT_OR_BROKEN?: number;
+    };
+    hardwareFaults?: {
+      powerButtonNotWorking?: number;
+      volumeButtonNotWorking?: number;
+      chargingPortNotWorking?: number;
+      earSpeakerNotWorking?: number;
+      proximitySensorNotWorking?: number;
+      wifiOrBluetoothNotWorking?: number;
+      vibratorNotWorking?: number;
+    };
     display: {
       FLAWLESS: number;
       MINOR_SCRATCHES: number;

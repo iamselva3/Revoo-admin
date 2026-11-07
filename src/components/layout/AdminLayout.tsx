@@ -43,13 +43,15 @@ export const AdminLayout: React.FC = () => {
         {/* Brand Header */}
         <div className="h-16 flex items-center px-5 gap-3 border-b border-slate-800 bg-slate-950">
           <img
-            src="/revoo-logo.png"
-            alt="REVOO"
+            src="/genie-logo.png"
+            alt="Genie"
             className="h-9 w-9 object-contain rounded-md bg-white p-0.5"
           />
           <div>
-            <span className="font-extrabold text-lg tracking-wider text-white">REVOO</span>
-            <span className="text-[10px] block font-medium uppercase tracking-widest text-revoo-accent">
+            <span className="font-extrabold text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-purple-400 to-pink-500">
+              Genie
+            </span>
+            <span className="text-[10px] block font-medium uppercase tracking-widest text-pink-400">
               Operations Hub
             </span>
           </div>

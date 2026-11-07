@@ -137,6 +137,42 @@ export const PricingPage: React.FC = () => {
   const [storageAdj, setStorageAdj] = useState<number | string>(0);
 
   // Percentage deduction states (Percentage from base model price)
+  // 1. DOFY Basic Questions
+  const [basicPercentages, setBasicPercentages] = useState<Record<string, number | string>>({
+    phoneNotWorking: 60,
+    touchscreenNotWorking: 15,
+    displayNotOriginal: 10,
+    noWarranty: 5,
+  });
+
+  // 2. DOFY Back Panel Condition
+  const [backPanelPercentages, setBackPanelPercentages] = useState<Record<string, number | string>>({
+    NO_DEFECTS: 0,
+    MINOR_SCRATCHES: 3,
+    HEAVY_SCRATCHES: 8,
+    BACK_PANEL_BROKEN: 15,
+  });
+
+  // 3. DOFY Center or Side Frame Condition
+  const [sidePanelPercentages, setSidePanelPercentages] = useState<Record<string, number | string>>({
+    NO_DEFECTS: 0,
+    MINOR_DENT_OR_SCRATCHES: 3,
+    HEAVY_DENT: 8,
+    BENT_OR_BROKEN: 12,
+  });
+
+  // 4. DOFY Hardware & Sensor Faults
+  const [hardwareFaultPercentages, setHardwareFaultPercentages] = useState<Record<string, number | string>>({
+    powerButtonNotWorking: 5,
+    volumeButtonNotWorking: 3,
+    chargingPortNotWorking: 8,
+    earSpeakerNotWorking: 3,
+    proximitySensorNotWorking: 3,
+    wifiOrBluetoothNotWorking: 5,
+    vibratorNotWorking: 2,
+  });
+
+  // Legacy percentages (kept for backward compatibility)
   const [displayPercentages, setDisplayPercentages] = useState<Record<string, number | string>>({
     FLAWLESS: 0,
     MINOR_SCRATCHES: 8,
@@ -192,6 +228,38 @@ export const PricingPage: React.FC = () => {
 
       const dp = pricingRule.deductionPercentages;
       const d = pricingRule.deductions;
+
+      // DOFY percentages
+      setBasicPercentages({
+        phoneNotWorking: getPct(dp?.basicQuestions?.phoneNotWorking, d?.basicQuestions?.phoneNotWorking, 60),
+        touchscreenNotWorking: getPct(dp?.basicQuestions?.touchscreenNotWorking, d?.basicQuestions?.touchscreenNotWorking, 15),
+        displayNotOriginal: getPct(dp?.basicQuestions?.displayNotOriginal, d?.basicQuestions?.displayNotOriginal, 10),
+        noWarranty: getPct(dp?.basicQuestions?.noWarranty, d?.basicQuestions?.noWarranty, 5),
+      });
+
+      setBackPanelPercentages({
+        NO_DEFECTS: 0,
+        MINOR_SCRATCHES: getPct(dp?.backPanel?.MINOR_SCRATCHES, d?.backPanel?.MINOR_SCRATCHES, 3),
+        HEAVY_SCRATCHES: getPct(dp?.backPanel?.HEAVY_SCRATCHES, d?.backPanel?.HEAVY_SCRATCHES, 8),
+        BACK_PANEL_BROKEN: getPct(dp?.backPanel?.BACK_PANEL_BROKEN, d?.backPanel?.BACK_PANEL_BROKEN, 15),
+      });
+
+      setSidePanelPercentages({
+        NO_DEFECTS: 0,
+        MINOR_DENT_OR_SCRATCHES: getPct(dp?.sidePanel?.MINOR_DENT_OR_SCRATCHES, d?.sidePanel?.MINOR_DENT_OR_SCRATCHES, 3),
+        HEAVY_DENT: getPct(dp?.sidePanel?.HEAVY_DENT, d?.sidePanel?.HEAVY_DENT, 8),
+        BENT_OR_BROKEN: getPct(dp?.sidePanel?.BENT_OR_BROKEN, d?.sidePanel?.BENT_OR_BROKEN, 12),
+      });
+
+      setHardwareFaultPercentages({
+        powerButtonNotWorking: getPct(dp?.hardwareFaults?.powerButtonNotWorking, d?.hardwareFaults?.powerButtonNotWorking, 5),
+        volumeButtonNotWorking: getPct(dp?.hardwareFaults?.volumeButtonNotWorking, d?.hardwareFaults?.volumeButtonNotWorking, 3),
+        chargingPortNotWorking: getPct(dp?.hardwareFaults?.chargingPortNotWorking, d?.hardwareFaults?.chargingPortNotWorking, 8),
+        earSpeakerNotWorking: getPct(dp?.hardwareFaults?.earSpeakerNotWorking, d?.hardwareFaults?.earSpeakerNotWorking, 3),
+        proximitySensorNotWorking: getPct(dp?.hardwareFaults?.proximitySensorNotWorking, d?.hardwareFaults?.proximitySensorNotWorking, 3),
+        wifiOrBluetoothNotWorking: getPct(dp?.hardwareFaults?.wifiOrBluetoothNotWorking, d?.hardwareFaults?.wifiOrBluetoothNotWorking, 5),
+        vibratorNotWorking: getPct(dp?.hardwareFaults?.vibratorNotWorking, d?.hardwareFaults?.vibratorNotWorking, 2),
+      });
 
       setDisplayPercentages({
         FLAWLESS: getPct(dp?.display?.FLAWLESS, d?.display?.FLAWLESS, 0),
@@ -254,7 +322,37 @@ export const PricingPage: React.FC = () => {
     // Calculate exact rupee deduction from base price and percentage
     const calcRupee = (pct: number | string) => Math.round((numericBasePrice * (Number(pct) || 0)) / 100);
 
-    const calculatedDeductions = {
+    const calculatedDeductions: any = {
+      // DOFY Deductions
+      basicQuestions: {
+        phoneNotWorking: calcRupee(basicPercentages.phoneNotWorking),
+        touchscreenNotWorking: calcRupee(basicPercentages.touchscreenNotWorking),
+        displayNotOriginal: calcRupee(basicPercentages.displayNotOriginal),
+        noWarranty: calcRupee(basicPercentages.noWarranty),
+      },
+      backPanel: {
+        NO_DEFECTS: 0,
+        MINOR_SCRATCHES: calcRupee(backPanelPercentages.MINOR_SCRATCHES),
+        HEAVY_SCRATCHES: calcRupee(backPanelPercentages.HEAVY_SCRATCHES),
+        BACK_PANEL_BROKEN: calcRupee(backPanelPercentages.BACK_PANEL_BROKEN),
+      },
+      sidePanel: {
+        NO_DEFECTS: 0,
+        MINOR_DENT_OR_SCRATCHES: calcRupee(sidePanelPercentages.MINOR_DENT_OR_SCRATCHES),
+        HEAVY_DENT: calcRupee(sidePanelPercentages.HEAVY_DENT),
+        BENT_OR_BROKEN: calcRupee(sidePanelPercentages.BENT_OR_BROKEN),
+      },
+      hardwareFaults: {
+        powerButtonNotWorking: calcRupee(hardwareFaultPercentages.powerButtonNotWorking),
+        volumeButtonNotWorking: calcRupee(hardwareFaultPercentages.volumeButtonNotWorking),
+        chargingPortNotWorking: calcRupee(hardwareFaultPercentages.chargingPortNotWorking),
+        earSpeakerNotWorking: calcRupee(hardwareFaultPercentages.earSpeakerNotWorking),
+        proximitySensorNotWorking: calcRupee(hardwareFaultPercentages.proximitySensorNotWorking),
+        wifiOrBluetoothNotWorking: calcRupee(hardwareFaultPercentages.wifiOrBluetoothNotWorking),
+        vibratorNotWorking: calcRupee(hardwareFaultPercentages.vibratorNotWorking),
+      },
+
+      // Legacy fields
       display: {
         FLAWLESS: calcRupee(displayPercentages.FLAWLESS),
         MINOR_SCRATCHES: calcRupee(displayPercentages.MINOR_SCRATCHES),
@@ -288,6 +386,35 @@ export const PricingPage: React.FC = () => {
     };
 
     const savedPercentages = {
+      // DOFY Percentages
+      basicQuestions: {
+        phoneNotWorking: Number(basicPercentages.phoneNotWorking) || 0,
+        touchscreenNotWorking: Number(basicPercentages.touchscreenNotWorking) || 0,
+        displayNotOriginal: Number(basicPercentages.displayNotOriginal) || 0,
+        noWarranty: Number(basicPercentages.noWarranty) || 0,
+      },
+      backPanel: {
+        NO_DEFECTS: 0,
+        MINOR_SCRATCHES: Number(backPanelPercentages.MINOR_SCRATCHES) || 0,
+        HEAVY_SCRATCHES: Number(backPanelPercentages.HEAVY_SCRATCHES) || 0,
+        BACK_PANEL_BROKEN: Number(backPanelPercentages.BACK_PANEL_BROKEN) || 0,
+      },
+      sidePanel: {
+        NO_DEFECTS: 0,
+        MINOR_DENT_OR_SCRATCHES: Number(sidePanelPercentages.MINOR_DENT_OR_SCRATCHES) || 0,
+        HEAVY_DENT: Number(sidePanelPercentages.HEAVY_DENT) || 0,
+        BENT_OR_BROKEN: Number(sidePanelPercentages.BENT_OR_BROKEN) || 0,
+      },
+      hardwareFaults: {
+        powerButtonNotWorking: Number(hardwareFaultPercentages.powerButtonNotWorking) || 0,
+        volumeButtonNotWorking: Number(hardwareFaultPercentages.volumeButtonNotWorking) || 0,
+        chargingPortNotWorking: Number(hardwareFaultPercentages.chargingPortNotWorking) || 0,
+        earSpeakerNotWorking: Number(hardwareFaultPercentages.earSpeakerNotWorking) || 0,
+        proximitySensorNotWorking: Number(hardwareFaultPercentages.proximitySensorNotWorking) || 0,
+        wifiOrBluetoothNotWorking: Number(hardwareFaultPercentages.wifiOrBluetoothNotWorking) || 0,
+        vibratorNotWorking: Number(hardwareFaultPercentages.vibratorNotWorking) || 0,
+      },
+
       display: {
         FLAWLESS: Number(displayPercentages.FLAWLESS) || 0,
         MINOR_SCRATCHES: Number(displayPercentages.MINOR_SCRATCHES) || 0,
@@ -513,25 +640,30 @@ export const PricingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Damage Deduction Matrices */}
+        {/* DOFY-Style Condition Deduction Matrices */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Display Damage */}
+          {/* 1. Basic Working Condition Questions */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                Display Damage Deductions
+                1. Basic Working Condition Deductions
               </h3>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 % of Base • Auto ₹
               </span>
             </div>
-            {Object.entries(displayPercentages).map(([key, pct]) => {
+            {[
+              { key: 'phoneNotWorking', label: 'Phone Not Working / Dead (Powers Off)' },
+              { key: 'touchscreenNotWorking', label: 'Touchscreen Not Working Properly' },
+              { key: 'displayNotOriginal', label: 'Display Not Original / Replaced Locally' },
+              { key: 'noWarranty', label: 'No Valid Manufacturer Warranty' },
+            ].map(({ key, label }) => {
+              const pct = basicPercentages[key] ?? 0;
               const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
-                  <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
-                  <div className="flex items-center gap-2">
-                    {/* Editable Percentage Input */}
+                  <span className="text-slate-600 font-medium pr-2">{label}</span>
+                  <div className="flex items-center gap-2 shrink-0">
                     <div className="relative flex items-center">
                       <input
                         type="number"
@@ -541,55 +673,55 @@ export const PricingPage: React.FC = () => {
                         value={pct}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setDisplayPercentages((prev) => ({
+                          setBasicPercentages((prev) => ({
                             ...prev,
                             [key]: cleanNumberInput(e.target.value, 100),
                           }))
                         }
                         onBlur={() => {
-                          if (displayPercentages[key] === '' || isNaN(Number(displayPercentages[key]))) {
-                            setDisplayPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          if (basicPercentages[key] === '' || isNaN(Number(basicPercentages[key]))) {
+                            setBasicPercentages((prev) => ({ ...prev, [key]: 0 }));
                           }
                         }}
-                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
                     </div>
-
-                    {/* Grey Non-Editable Calculated Price */}
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        readOnly
-                        disabled
-                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
-                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
-                        title="Auto-calculated from base price"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                      className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                    />
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Body Damage */}
+          {/* 2. Back Panel Condition */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                Body / Frame Deductions
+                2. Back Panel Deductions
               </h3>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 % of Base • Auto ₹
               </span>
             </div>
-            {Object.entries(bodyPercentages).map(([key, pct]) => {
+            {[
+              { key: 'NO_DEFECTS', label: 'No Defects on Back Panel' },
+              { key: 'MINOR_SCRATCHES', label: 'Minor Scratches (< 2 scratches)' },
+              { key: 'HEAVY_SCRATCHES', label: 'Heavy Scratches' },
+              { key: 'BACK_PANEL_BROKEN', label: 'Back Panel Broken / Cracked Glass' },
+            ].map(({ key, label }) => {
+              const pct = backPanelPercentages[key] ?? 0;
               const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
-                  <span className="text-slate-600 font-medium">{key.replace(/_/g, ' ')}</span>
-                  <div className="flex items-center gap-2">
-                    {/* Editable Percentage Input */}
+                  <span className="text-slate-600 font-medium pr-2">{label}</span>
+                  <div className="flex items-center gap-2 shrink-0">
                     <div className="relative flex items-center">
                       <input
                         type="number"
@@ -599,55 +731,55 @@ export const PricingPage: React.FC = () => {
                         value={pct}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setBodyPercentages((prev) => ({
+                          setBackPanelPercentages((prev) => ({
                             ...prev,
                             [key]: cleanNumberInput(e.target.value, 100),
                           }))
                         }
                         onBlur={() => {
-                          if (bodyPercentages[key] === '' || isNaN(Number(bodyPercentages[key]))) {
-                            setBodyPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          if (backPanelPercentages[key] === '' || isNaN(Number(backPanelPercentages[key]))) {
+                            setBackPanelPercentages((prev) => ({ ...prev, [key]: 0 }));
                           }
                         }}
-                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
                     </div>
-
-                    {/* Grey Non-Editable Calculated Price */}
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        readOnly
-                        disabled
-                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
-                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
-                        title="Auto-calculated from base price"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                      className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                    />
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Battery Health */}
+          {/* 3. Center or Side Panel Condition */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                Battery Health Deductions
+                3. Center or Side Frame Deductions
               </h3>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 % of Base • Auto ₹
               </span>
             </div>
-            {Object.entries(batteryPercentages).map(([key, pct]) => {
+            {[
+              { key: 'NO_DEFECTS', label: 'No Defects on Center Panel' },
+              { key: 'MINOR_DENT_OR_SCRATCHES', label: 'Minor Dent or Scratches' },
+              { key: 'HEAVY_DENT', label: 'Heavy Dent on Frame' },
+              { key: 'BENT_OR_BROKEN', label: 'Side Panel Bent or Broken' },
+            ].map(({ key, label }) => {
+              const pct = sidePanelPercentages[key] ?? 0;
               const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between text-xs py-1">
-                  <span className="text-slate-600 font-medium">{key}</span>
-                  <div className="flex items-center gap-2">
-                    {/* Editable Percentage Input */}
+                  <span className="text-slate-600 font-medium pr-2">{label}</span>
+                  <div className="flex items-center gap-2 shrink-0">
                     <div className="relative flex items-center">
                       <input
                         type="number"
@@ -657,56 +789,54 @@ export const PricingPage: React.FC = () => {
                         value={pct}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setBatteryPercentages((prev) => ({
+                          setSidePanelPercentages((prev) => ({
                             ...prev,
                             [key]: cleanNumberInput(e.target.value, 100),
                           }))
                         }
                         onBlur={() => {
-                          if (batteryPercentages[key] === '' || isNaN(Number(batteryPercentages[key]))) {
-                            setBatteryPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          if (sidePanelPercentages[key] === '' || isNaN(Number(sidePanelPercentages[key]))) {
+                            setSidePanelPercentages((prev) => ({ ...prev, [key]: 0 }));
                           }
                         }}
-                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                        className="w-16 p-1.5 pr-4 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[10px] pointer-events-none">%</span>
                     </div>
-
-                    {/* Grey Non-Editable Calculated Price */}
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        readOnly
-                        disabled
-                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
-                        className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
-                        title="Auto-calculated from base price"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                      className="w-24 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-xs text-slate-500 cursor-not-allowed select-none"
+                    />
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Accessories Bonus */}
+          {/* 4. Original Accessories Bonus */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                Original Accessories Bonus (+₹)
+                4. Original Accessories Bonus (+₹)
               </h3>
-              <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                Fixed Cash Bonus (+₹)
+              <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                Direct Cash Bonus (+₹)
               </span>
             </div>
-            {Object.entries(accessoriesBonus).map(([key, val]) => (
-              <div key={key} className="flex items-center justify-between text-xs py-1">
-                <span className="text-slate-600 font-medium">{key.replace(/([A-Z])/g, ' $1')}</span>
+            {[
+              { key: 'hasOriginalCharger', label: 'Original Charger of Device' },
+              { key: 'hasOriginalBox', label: 'Original Box of Device' },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center justify-between text-xs py-2">
+                <span className="text-slate-700 font-medium">{label}</span>
                 <div className="relative flex items-center">
-                  <span className="absolute left-2 text-emerald-600 font-bold text-xs pointer-events-none">+₹</span>
+                  <span className="absolute left-2.5 text-emerald-600 font-bold text-xs pointer-events-none">+₹</span>
                   <input
                     type="number"
-                    value={val}
+                    value={accessoriesBonus[key] ?? 500}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       setAccessoriesBonus((prev) => ({
@@ -719,7 +849,7 @@ export const PricingPage: React.FC = () => {
                         setAccessoriesBonus((prev) => ({ ...prev, [key]: 0 }));
                       }
                     }}
-                    className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-emerald-700 bg-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-emerald-700 bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
@@ -727,24 +857,32 @@ export const PricingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Functional Faults Deductions */}
+        {/* 5. Hardware & Sensor Fault Deductions */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-900">
-              Hardware & Component Fault Deductions
+              5. Hardware & Sensor Fault Deductions
             </h3>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
               % of Base • Auto ₹
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-            {Object.entries(functionalPercentages).map(([key, pct]) => {
+            {[
+              { key: 'powerButtonNotWorking', label: 'Power Button Not Working' },
+              { key: 'volumeButtonNotWorking', label: 'Volume Button Not Working' },
+              { key: 'chargingPortNotWorking', label: 'Charging Port Not Working' },
+              { key: 'earSpeakerNotWorking', label: 'Ear Speaker Not Working or Low' },
+              { key: 'proximitySensorNotWorking', label: 'Proximity Sensor Not Working' },
+              { key: 'wifiOrBluetoothNotWorking', label: 'WiFi or Bluetooth Not Working' },
+              { key: 'vibratorNotWorking', label: 'Vibrator Not Working' },
+            ].map(({ key, label }) => {
+              const pct = hardwareFaultPercentages[key] ?? 0;
               const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
               return (
                 <div key={key} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                  <span className="text-slate-700 font-medium text-xs pr-2">{key.replace(/([A-Z])/g, ' $1')}</span>
+                  <span className="text-slate-700 font-medium text-xs pr-2">{label}</span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {/* Editable Percentage Input */}
                     <div className="relative flex items-center">
                       <input
                         type="number"
@@ -754,32 +892,27 @@ export const PricingPage: React.FC = () => {
                         value={pct}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) =>
-                          setFunctionalPercentages((prev) => ({
+                          setHardwareFaultPercentages((prev) => ({
                             ...prev,
                             [key]: cleanNumberInput(e.target.value, 100),
                           }))
                         }
                         onBlur={() => {
-                          if (functionalPercentages[key] === '' || isNaN(Number(functionalPercentages[key]))) {
-                            setFunctionalPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          if (hardwareFaultPercentages[key] === '' || isNaN(Number(hardwareFaultPercentages[key]))) {
+                            setHardwareFaultPercentages((prev) => ({ ...prev, [key]: 0 }));
                           }
                         }}
-                        className="w-14 p-1.5 pr-3.5 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none bg-white"
+                        className="w-14 p-1 pr-3 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"
                       />
                       <span className="absolute right-1 text-slate-400 font-bold text-[9px] pointer-events-none">%</span>
                     </div>
-
-                    {/* Grey Non-Editable Calculated Price */}
-                    <div className="relative flex items-center">
-                      <input
-                        type="text"
-                        readOnly
-                        disabled
-                        value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
-                        className="w-20 p-1.5 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-[11px] text-slate-500 cursor-not-allowed select-none"
-                        title="Auto-calculated from base price"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                      className="w-20 p-1 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-[11px] text-slate-500 cursor-not-allowed select-none"
+                    />
                   </div>
                 </div>
               );
