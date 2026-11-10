@@ -17,9 +17,11 @@ import {
   X,
   Image as ImageIcon,
   CheckCircle2,
+  Check,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { SmartphoneModel, Brand } from '../../types';
+import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 
 const resolveImageUrl = (url?: string): string | undefined => {
   if (!url) return undefined;
@@ -29,6 +31,27 @@ const resolveImageUrl = (url?: string): string | undefined => {
   const backendBase = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 };
+
+interface VariantItemState {
+  id: string;
+  capacity: string;
+  ram?: string;
+  storage?: string;
+  priceModifier: number;
+  enabled: boolean;
+}
+
+const STANDARD_VARIANTS: Array<{ ram: string; storage: string; defaultModifier: number }> = [
+  { ram: '4GB', storage: '64GB', defaultModifier: -4000 },
+  { ram: '6GB', storage: '128GB', defaultModifier: -2000 },
+  { ram: '8GB', storage: '128GB', defaultModifier: 0 },
+  { ram: '8GB', storage: '256GB', defaultModifier: 3500 },
+  { ram: '12GB', storage: '256GB', defaultModifier: 6000 },
+  { ram: '12GB', storage: '512GB', defaultModifier: 10000 },
+  { ram: '16GB', storage: '512GB', defaultModifier: 14000 },
+  { ram: '16GB', storage: '1TB', defaultModifier: 20000 },
+  { ram: '16GB', storage: '2TB', defaultModifier: 28000 },
+];
 
 export const ModelsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -49,7 +72,14 @@ export const ModelsPage: React.FC = () => {
   const [releaseYear, setReleaseYear] = useState<number>(2024);
   const [imageUrl, setImageUrl] = useState('');
 
-  // Variant state (RAM & ROM / Storage)
+  // Multi-variant checkbox matrix state
+  const [variantsList, setVariantsList] = useState<VariantItemState[]>([]);
+  const [showCustomVariantRow, setShowCustomVariantRow] = useState(false);
+  const [customRam, setCustomRam] = useState('8GB');
+  const [customStorage, setCustomStorage] = useState('256GB');
+  const [customModifier, setCustomModifier] = useState<number>(3500);
+
+  // Variant state (RAM & ROM / Storage) for separate modal
   const [variantRam, setVariantRam] = useState('8GB');
   const [variantStorage, setVariantStorage] = useState('256GB');
   const [variantCapacity, setVariantCapacity] = useState('8GB / 256GB');
@@ -127,6 +157,17 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(40000);
     setReleaseYear(2024);
     setImageUrl('');
+    setVariantsList(
+      STANDARD_VARIANTS.map((v) => ({
+        id: `${v.ram}-${v.storage}`,
+        capacity: `${v.ram} / ${v.storage}`,
+        ram: v.ram,
+        storage: v.storage,
+        priceModifier: v.defaultModifier,
+        enabled: (v.ram === '8GB' && v.storage === '128GB') || (v.ram === '8GB' && v.storage === '256GB'),
+      }))
+    );
+    setShowCustomVariantRow(false);
   };
 
   const handleOpenAdd = () => {
@@ -143,6 +184,73 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(m.basePrice);
     setReleaseYear(m.releaseYear);
     setImageUrl(m.imageUrl || '');
+
+    // Pre-populate variants
+    const existingVariants = m.variants || [];
+    if (existingVariants.length > 0) {
+      const matchedList: VariantItemState[] = [];
+      const usedCapacities = new Set<string>();
+
+      existingVariants.forEach((ev) => {
+        matchedList.push({
+          id: ev._id || ev.capacity,
+          capacity: ev.capacity,
+          ram: ev.ram,
+          storage: ev.storage,
+          priceModifier: ev.priceModifier || 0,
+          enabled: true,
+        });
+        usedCapacities.add(ev.capacity.toLowerCase().replace(/\s+/g, ''));
+      });
+
+      // Add unconfigured standard variants as unchecked
+      STANDARD_VARIANTS.forEach((sv) => {
+        const capKey = `${sv.ram}/${sv.storage}`.toLowerCase();
+        if (!usedCapacities.has(capKey)) {
+          matchedList.push({
+            id: `${sv.ram}-${sv.storage}`,
+            capacity: `${sv.ram} / ${sv.storage}`,
+            ram: sv.ram,
+            storage: sv.storage,
+            priceModifier: sv.defaultModifier,
+            enabled: false,
+          });
+        }
+      });
+
+      setVariantsList(matchedList);
+    } else {
+      setVariantsList(
+        STANDARD_VARIANTS.map((v) => ({
+          id: `${v.ram}-${v.storage}`,
+          capacity: `${v.ram} / ${v.storage}`,
+          ram: v.ram,
+          storage: v.storage,
+          priceModifier: v.defaultModifier,
+          enabled: (v.ram === '8GB' && v.storage === '128GB') || (v.ram === '8GB' && v.storage === '256GB'),
+        }))
+      );
+    }
+    setShowCustomVariantRow(false);
+  };
+
+  const handleAddCustomVariant = () => {
+    const cap = `${customRam} / ${customStorage}`;
+    if (variantsList.some((v) => v.capacity.toLowerCase() === cap.toLowerCase())) {
+      return;
+    }
+    setVariantsList([
+      ...variantsList,
+      {
+        id: `custom-${Date.now()}`,
+        capacity: cap,
+        ram: customRam,
+        storage: customStorage,
+        priceModifier: customModifier,
+        enabled: true,
+      },
+    ]);
+    setShowCustomVariantRow(false);
   };
 
   const compressImage = (file: File): Promise<string> => {
@@ -192,14 +300,24 @@ export const ModelsPage: React.FC = () => {
 
   const handleSaveModel = (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedVariants = variantsList
+      .filter((v) => v.enabled)
+      .map((v) => ({
+        capacity: v.capacity,
+        ram: v.ram,
+        storage: v.storage,
+        priceModifier: Number(v.priceModifier) || 0,
+      }));
+
     const payload = {
       brandId: brandId || brands?.[0]?._id,
       name,
       slug: slug || name.toLowerCase().replace(/\s+/g, '-'),
-      basePrice,
-      releaseYear,
+      basePrice: Number(basePrice),
+      releaseYear: Number(releaseYear),
       imageUrl,
       isPublished: true,
+      variants: selectedVariants,
     };
 
     if (editingModel) {
@@ -227,28 +345,28 @@ export const ModelsPage: React.FC = () => {
   };
 
   const detectCategory = (model: SmartphoneModel): 'phone' | 'laptop' | 'tablet' | 'tv' => {
-    const name = (model.name || '').toLowerCase();
-    if (name.includes('tv') || name.includes('bravia') || name.includes('oled') || name.includes('qled') || name.includes('crystal') || name.includes('uhd')) return 'tv';
-    if (name.includes('ipad') || name.includes('tab') || name.includes('pad')) return 'tablet';
+    const modelName = (model.name || '').toLowerCase();
+    if (modelName.includes('tv') || modelName.includes('bravia') || modelName.includes('oled') || modelName.includes('qled') || modelName.includes('crystal') || modelName.includes('uhd')) return 'tv';
+    if (modelName.includes('ipad') || modelName.includes('tab') || modelName.includes('pad')) return 'tablet';
     if (
-      name.includes('macbook') ||
-      name.includes('laptop') ||
-      name.includes('xps') ||
-      name.includes('alienware') ||
-      name.includes('thinkpad') ||
-      name.includes('zenbook') ||
-      name.includes('vivobook') ||
-      name.includes('omen') ||
-      name.includes('predator') ||
-      name.includes('inspiron') ||
-      name.includes('swift') ||
-      name.includes('yoga') ||
-      name.includes('legion') ||
-      name.includes('spectre') ||
-      name.includes('envy') ||
-      name.includes('air') ||
-      name.includes('pro 14') ||
-      name.includes('pro 16')
+      modelName.includes('macbook') ||
+      modelName.includes('laptop') ||
+      modelName.includes('xps') ||
+      modelName.includes('alienware') ||
+      modelName.includes('thinkpad') ||
+      modelName.includes('zenbook') ||
+      modelName.includes('vivobook') ||
+      modelName.includes('omen') ||
+      modelName.includes('predator') ||
+      modelName.includes('inspiron') ||
+      modelName.includes('swift') ||
+      modelName.includes('yoga') ||
+      modelName.includes('legion') ||
+      modelName.includes('spectre') ||
+      modelName.includes('envy') ||
+      modelName.includes('air') ||
+      modelName.includes('pro 14') ||
+      modelName.includes('pro 16')
     )
       return 'laptop';
     return 'phone';
@@ -274,6 +392,21 @@ export const ModelsPage: React.FC = () => {
     }
   };
 
+  const brandOptions: SelectOption[] = [
+    { value: '', label: 'All Brands' },
+    ...(brands || []).map((b) => ({
+      value: b._id,
+      label: b.name,
+      icon: b.logoUrl ? <img src={b.logoUrl} alt={b.name} className="w-4 h-4 object-contain rounded" /> : undefined,
+    })),
+  ];
+
+  const modalBrandOptions: SelectOption[] = (brands || []).map((b) => ({
+    value: b._id,
+    label: b.name,
+    icon: b.logoUrl ? <img src={b.logoUrl} alt={b.name} className="w-4 h-4 object-contain rounded" /> : undefined,
+  }));
+
   return (
     <div className="space-y-6">
       {/* Page Title & Actions */}
@@ -289,7 +422,7 @@ export const ModelsPage: React.FC = () => {
 
         <button
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-revoo-700 hover:bg-revoo-800 text-white text-xs font-semibold rounded-xl shadow-xs transition"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-revoo-700 hover:bg-revoo-800 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add Model
         </button>
@@ -317,7 +450,7 @@ export const ModelsPage: React.FC = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => setSelectedCategory(tab.id as any)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600'
@@ -333,27 +466,16 @@ export const ModelsPage: React.FC = () => {
             })}
           </div>
 
-          {/* Aesthetic Brand Filter */}
+          {/* Modern Custom Brand Filter */}
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Brand:</span>
-            <div className="relative">
-              <select
+            <div className="w-48">
+              <ModernSelect
                 value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                className="appearance-none pl-3 pr-8 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-revoo-500 cursor-pointer transition shadow-2xs"
-              >
-                <option value="">All Brands</option>
-                {brands?.map((b) => (
-                  <option key={b._id} value={b._id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
-                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
+                onChange={(val) => setSelectedBrand(String(val))}
+                options={brandOptions}
+                placeholder="All Brands"
+              />
             </div>
           </div>
         </div>
@@ -371,7 +493,7 @@ export const ModelsPage: React.FC = () => {
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
             >
               Clear
             </button>
@@ -387,6 +509,7 @@ export const ModelsPage: React.FC = () => {
               <th className="px-6 py-3.5">Device Model</th>
               <th className="px-6 py-3.5">Brand</th>
               <th className="px-6 py-3.5">Category</th>
+              <th className="px-6 py-3.5">Variants Configured</th>
               <th className="px-6 py-3.5">Release Year</th>
               <th className="px-6 py-3.5">Base Buyback Price</th>
               <th className="px-6 py-3.5">Status</th>
@@ -397,12 +520,12 @@ export const ModelsPage: React.FC = () => {
             {isLoading ? (
               [...Array(6)].map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                  <td colSpan={7} className="px-6 py-4 bg-slate-50/50"></td>
+                  <td colSpan={8} className="px-6 py-4 bg-slate-50/50"></td>
                 </tr>
               ))
             ) : filteredModels.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                   <Smartphone className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                   <p className="font-semibold">No models found.</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your category filter or search query.</p>
@@ -411,6 +534,7 @@ export const ModelsPage: React.FC = () => {
             ) : (
               filteredModels.map((m) => {
                 const cat = detectCategory(m);
+                const modelVariants = m.variants || [];
                 return (
                   <tr key={m._id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-3.5 font-bold text-slate-900 flex items-center gap-3">
@@ -449,6 +573,27 @@ export const ModelsPage: React.FC = () => {
                         {cat}
                       </span>
                     </td>
+                    <td className="px-6 py-3.5">
+                      {modelVariants.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {modelVariants.slice(0, 3).map((v, idx) => (
+                            <span
+                              key={idx}
+                              className="px-1.5 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-semibold rounded-md"
+                            >
+                              {v.capacity}
+                            </span>
+                          ))}
+                          {modelVariants.length > 3 && (
+                            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md">
+                              +{modelVariants.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">Standard</span>
+                      )}
+                    </td>
                     <td className="px-6 py-3.5 text-slate-500">{m.releaseYear}</td>
                     <td className="px-6 py-3.5 font-bold text-revoo-700 font-mono text-sm">
                       ₹{m.basePrice.toLocaleString('en-IN')}
@@ -469,8 +614,8 @@ export const ModelsPage: React.FC = () => {
                         {/* Edit Button */}
                         <button
                           onClick={() => handleOpenEdit(m)}
-                          title="Edit Device Model & Price"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition"
+                          title="Edit Device Model, Name, Price & Variants"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer"
                         >
                           <Edit className="w-3.5 h-3.5" /> Edit
                         </button>
@@ -478,26 +623,26 @@ export const ModelsPage: React.FC = () => {
                         {/* Add Variant Button */}
                         <button
                           onClick={() => setShowVariantModal(m)}
-                          title="Add Storage Variant"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition"
+                          title="Quick Add Single Variant"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-200 transition cursor-pointer"
                         >
                           <Layers className="w-3.5 h-3.5" /> + Variant
                         </button>
 
-                        {/* Archive Button - Safe In-App Confirmation */}
+                        {/* Archive Button */}
                         <button
                           onClick={() => setConfirmArchiveModel(m)}
                           title="Archive Model"
-                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-slate-200 transition"
+                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg border border-slate-200 transition cursor-pointer"
                         >
                           <Archive className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Delete Button - Safe In-App Confirmation */}
+                        {/* Delete Button */}
                         <button
                           onClick={() => setConfirmDeleteModel(m)}
                           title="Delete Model Permanently"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
@@ -514,7 +659,7 @@ export const ModelsPage: React.FC = () => {
       {/* Add or Edit Model Modal */}
       {(showAddModal || editingModel) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start sm:items-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 bg-white sticky top-0 z-10">
               <div>
@@ -522,7 +667,7 @@ export const ModelsPage: React.FC = () => {
                   {editingModel ? `Edit Model: ${editingModel.name}` : 'Add Smartphone Model'}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {editingModel ? 'Update device specifications, base buyback price, and photo.' : 'Add a new phone model to the customer valuation catalogue.'}
+                  {editingModel ? 'Update device specifications, base buyback price, photo, and supported variants.' : 'Add a new phone model and select which RAM & ROM variants it supports.'}
                 </p>
               </div>
               <button
@@ -532,7 +677,7 @@ export const ModelsPage: React.FC = () => {
                   setEditingModel(null);
                   resetForm();
                 }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -541,20 +686,15 @@ export const ModelsPage: React.FC = () => {
             {/* Modal Body */}
             <form onSubmit={handleSaveModel} className="flex flex-col flex-1 overflow-hidden">
               <div className="overflow-y-auto p-6 space-y-4 flex-1">
+                {/* Modern Brand Select */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Manufacturer Brand</label>
-                  <select
-                    required
-                    value={brandId || brands?.[0]?._id}
-                    onChange={(e) => setBrandId(e.target.value)}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-revoo-500"
-                  >
-                    {brands?.map((b) => (
-                      <option key={b._id} value={b._id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
+                  <ModernSelect
+                    value={brandId || brands?.[0]?._id || ''}
+                    onChange={(val) => setBrandId(String(val))}
+                    options={modalBrandOptions}
+                    placeholder="Select Manufacturer Brand..."
+                  />
                 </div>
 
                 <div>
@@ -565,7 +705,7 @@ export const ModelsPage: React.FC = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Galaxy S24 Ultra, iPhone 15 Pro, Nothing Phone (2a)"
-                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
                   />
                 </div>
 
@@ -577,8 +717,9 @@ export const ModelsPage: React.FC = () => {
                       required
                       value={basePrice}
                       onChange={(e) => setBasePrice(Number(e.target.value))}
-                      className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-revoo-500"
                     />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Standard baseline reference price</span>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Release Year</label>
@@ -586,8 +727,9 @@ export const ModelsPage: React.FC = () => {
                       type="number"
                       value={releaseYear}
                       onChange={(e) => setReleaseYear(Number(e.target.value))}
-                      className="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
                     />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Launch release year</span>
                   </div>
                 </div>
 
@@ -596,8 +738,8 @@ export const ModelsPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700">Device Photo</label>
 
                   {imageUrl && (
-                    <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                      <div className="w-12 h-12 rounded bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
                         <img src={imageUrl} alt="preview" className="w-full h-full object-contain" />
                       </div>
                       <div className="flex-1 overflow-hidden">
@@ -609,7 +751,7 @@ export const ModelsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setImageUrl('')}
-                        className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1"
+                        className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 cursor-pointer"
                       >
                         Remove
                       </button>
@@ -617,7 +759,7 @@ export const ModelsPage: React.FC = () => {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-300 transition">
                       <Upload className="w-4 h-4 text-slate-600" />
                       <span>Upload Photo</span>
                       <input
@@ -635,8 +777,162 @@ export const ModelsPage: React.FC = () => {
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                     placeholder="https://... or click Upload Photo above"
-                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
                   />
+                </div>
+
+                {/* Multi-Variant Checkbox Matrix Section */}
+                <div className="pt-3 border-t border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-900">
+                        Hardware Variants & Selling Prices
+                      </label>
+                      <p className="text-[11px] text-slate-500">
+                        Tick the configurations available for this model. Customer selling prices are calculated in real time.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {variantsList.filter((v) => v.enabled).length} Configured
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 border border-slate-200/80 rounded-xl p-2 bg-slate-50/50">
+                    {variantsList.map((v, idx) => {
+                      const effectiveSellingPrice = Math.max(0, Number(basePrice || 0) + Number(v.priceModifier || 0));
+                      return (
+                        <div
+                          key={v.id || idx}
+                          className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-all ${
+                            v.enabled
+                              ? 'bg-white border-indigo-300 ring-1 ring-indigo-500/10 shadow-2xs'
+                              : 'bg-white/60 border-slate-200 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          {/* Checkbox and Variant Label */}
+                          <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={v.enabled}
+                              onChange={(e) => {
+                                const updated = [...variantsList];
+                                updated[idx].enabled = e.target.checked;
+                                setVariantsList(updated);
+                              }}
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                            />
+                            <div className="min-w-0">
+                              <span className={`text-xs font-bold block truncate ${v.enabled ? 'text-slate-900' : 'text-slate-500'}`}>
+                                {v.capacity}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {v.ram && v.storage ? `${v.ram} RAM • ${v.storage} ROM` : 'Configuration'}
+                              </span>
+                            </div>
+                          </label>
+
+                          {/* Price Modifier Input */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {v.enabled && (
+                              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                                <span className="text-[10px] font-bold text-slate-400">±₹</span>
+                                <input
+                                  type="number"
+                                  value={v.priceModifier}
+                                  onChange={(e) => {
+                                    const updated = [...variantsList];
+                                    updated[idx].priceModifier = Number(e.target.value);
+                                    setVariantsList(updated);
+                                  }}
+                                  className="w-16 text-xs font-mono font-bold text-slate-800 bg-transparent focus:outline-none"
+                                  placeholder="0"
+                                />
+                              </div>
+                            )}
+
+                            {/* Customer Selling Price Preview Badge */}
+                            <div
+                              className={`px-2.5 py-1 rounded-lg text-right min-w-[90px] ${
+                                v.enabled
+                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                                  : 'bg-slate-100 text-slate-400 border border-slate-200'
+                              }`}
+                            >
+                              <div className="text-[9px] font-bold uppercase tracking-wider">Selling Price</div>
+                              <div className="text-xs font-mono font-bold">
+                                {v.enabled ? `₹${effectiveSellingPrice.toLocaleString('en-IN')}` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Custom Configuration Toggle */}
+                  {!showCustomVariantRow ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomVariantRow(true)}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 mt-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Custom RAM & ROM Configuration
+                    </button>
+                  ) : (
+                    <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-2 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-950">Add Custom Hardware Variant</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowCustomVariantRow(false)}
+                          className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">RAM</label>
+                          <input
+                            type="text"
+                            value={customRam}
+                            onChange={(e) => setCustomRam(e.target.value)}
+                            placeholder="e.g. 12GB"
+                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">ROM / Storage</label>
+                          <input
+                            type="text"
+                            value={customStorage}
+                            onChange={(e) => setCustomStorage(e.target.value)}
+                            placeholder="e.g. 512GB"
+                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Modifier (₹)</label>
+                          <input
+                            type="number"
+                            value={customModifier}
+                            onChange={(e) => setCustomModifier(Number(e.target.value))}
+                            placeholder="3500"
+                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleAddCustomVariant}
+                          className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 cursor-pointer"
+                        >
+                          Include This Variant
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -649,20 +945,20 @@ export const ModelsPage: React.FC = () => {
                     setEditingModel(null);
                     resetForm();
                   }}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg transition"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createModelMutation.isPending || updateModelMutation.isPending}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-lg shadow-sm transition"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-xl shadow-sm transition cursor-pointer"
                 >
                   {createModelMutation.isPending || updateModelMutation.isPending
                     ? 'Saving...'
                     : editingModel
-                    ? 'Update Model'
-                    : 'Publish Model'}
+                    ? 'Update Model & Variants'
+                    : 'Publish Model & Variants'}
                 </button>
               </div>
             </form>
@@ -684,7 +980,7 @@ export const ModelsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowVariantModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -700,7 +996,7 @@ export const ModelsPage: React.FC = () => {
                       setVariantRam(e.target.value);
                       setVariantCapacity(`${e.target.value} / ${variantStorage}`);
                     }}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white font-medium"
                   >
                     <option value="4GB">4GB RAM</option>
                     <option value="6GB">6GB RAM</option>
@@ -720,7 +1016,7 @@ export const ModelsPage: React.FC = () => {
                       setVariantStorage(e.target.value);
                       setVariantCapacity(`${variantRam} / ${e.target.value}`);
                     }}
-                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white font-medium"
                   >
                     <option value="64GB">64GB ROM</option>
                     <option value="128GB">128GB ROM</option>
@@ -739,7 +1035,7 @@ export const ModelsPage: React.FC = () => {
                   value={variantCapacity}
                   onChange={(e) => setVariantCapacity(e.target.value)}
                   placeholder="e.g. 8GB / 256GB"
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
                   How this configuration will appear in customer selection (e.g. 8GB / 256GB).
@@ -753,10 +1049,10 @@ export const ModelsPage: React.FC = () => {
                   value={variantPriceModifier}
                   onChange={(e) => setVariantPriceModifier(Number(e.target.value))}
                   placeholder="e.g. 3500"
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-mono font-bold"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Amount added to base price (₹{showVariantModal.basePrice.toLocaleString('en-IN')}) for engine calculation. (Not displayed to customers).
+                  Amount added to base price (₹{showVariantModal.basePrice.toLocaleString('en-IN')}) for valuation.
                 </span>
               </div>
 
@@ -764,14 +1060,14 @@ export const ModelsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowVariantModal(null)}
-                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createVariantMutation.isPending}
-                  className="px-4 py-1.5 text-xs font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-lg shadow-sm"
+                  className="px-4 py-1.5 text-xs font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-xl shadow-sm cursor-pointer"
                 >
                   {createVariantMutation.isPending ? 'Saving...' : 'Save Variant'}
                 </button>
@@ -780,6 +1076,7 @@ export const ModelsPage: React.FC = () => {
           </div>
         </div>
       )}
+
       {/* Safe In-App Delete Confirmation Modal */}
       {confirmDeleteModel && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -795,7 +1092,7 @@ export const ModelsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setConfirmDeleteModel(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -807,7 +1104,7 @@ export const ModelsPage: React.FC = () => {
                     onSettled: () => setConfirmDeleteModel(null),
                   });
                 }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition"
+                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition cursor-pointer"
               >
                 {deleteModelMutation.isPending ? 'Deleting...' : 'Yes, Delete Model'}
               </button>
@@ -831,7 +1128,7 @@ export const ModelsPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setConfirmArchiveModel(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -843,7 +1140,7 @@ export const ModelsPage: React.FC = () => {
                     onSettled: () => setConfirmArchiveModel(null),
                   });
                 }}
-                className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition"
+                className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition cursor-pointer"
               >
                 {archiveMutation.isPending ? 'Archiving...' : 'Yes, Archive Model'}
               </button>

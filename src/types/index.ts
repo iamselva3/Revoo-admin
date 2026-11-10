@@ -45,6 +45,14 @@ export interface SmartphoneModel {
   basePrice: number;
   isPublished: boolean;
   isArchived: boolean;
+  variants?: Array<{
+    _id?: string;
+    capacity: string;
+    ram?: string;
+    storage?: string;
+    priceModifier: number;
+    isPublished?: boolean;
+  }>;
 }
 
 export interface StorageVariant {
