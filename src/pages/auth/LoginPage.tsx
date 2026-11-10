@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Lock, Mail, AlertCircle, ArrowRight, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { ThemeToggle } from '../../components/common/ThemeToggle';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid work email address'),
@@ -69,18 +68,8 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const fillQuickAccount = (email: string, pass: string) => {
-    setValue('email', email);
-    setValue('password', pass);
-  };
-
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#07090E] text-white flex flex-col items-center justify-center p-3 sm:p-4 relative select-none">
-      {/* Top Right Theme Toggle */}
-      <div className="absolute top-4 right-4 z-20">
-        <ThemeToggle showLabel />
-      </div>
-
       {/* Ambient glowing background blobs matching Genie brand colors */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-purple-600/15 rounded-full blur-[130px] pointer-events-none" />
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[340px] h-[260px] bg-pink-600/10 rounded-full blur-[110px] pointer-events-none" />
@@ -136,7 +125,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Centered Login Card - Smoothly slides up & completely non-scrollable */}
+        {/* Centered Login Card - Always in Premium OLED Dark Mode */}
         <div
           className={`w-full transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
             animStage >= 4
@@ -144,11 +133,11 @@ export const LoginPage: React.FC = () => {
               : 'opacity-0 translate-y-5 pointer-events-none'
           }`}
         >
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden text-slate-900">
+          <div className="bg-[#0b0d14] rounded-2xl shadow-2xl border border-neutral-800/90 overflow-hidden text-white">
             {/* Form Body */}
             <div className="p-5 sm:p-6">
               {errorMsg && (
-                <div className="mb-3.5 p-2.5 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                <div className="mb-3.5 p-2.5 bg-red-950/40 border border-red-800/60 rounded-xl flex items-center gap-2 text-xs text-red-300">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
@@ -156,45 +145,45 @@ export const LoginPage: React.FC = () => {
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
                     Staff Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Mail className="w-4 h-4 text-neutral-500 absolute left-3 top-2.5" />
                     <input
                       type="email"
                       {...register('email')}
                       placeholder="admin@revoo.com"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all font-medium"
+                      className="w-full pl-9 pr-3 py-2 bg-[#12141e] border border-neutral-700/80 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-[#161926] focus:border-purple-500 transition-all font-medium"
                     />
                   </div>
                   {errors.email && (
-                    <p className="text-[11px] text-red-600 mt-0.5 font-medium">{errors.email.message}</p>
+                    <p className="text-[11px] text-red-400 mt-0.5 font-medium">{errors.email.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-bold text-neutral-300 mb-1">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <Lock className="w-4 h-4 text-neutral-500 absolute left-3 top-2.5" />
                     <input
                       type="password"
                       {...register('password')}
                       placeholder="••••••••••••"
-                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all font-medium"
+                      className="w-full pl-9 pr-3 py-2 bg-[#12141e] border border-neutral-700/80 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-[#161926] focus:border-purple-500 transition-all font-medium"
                     />
                   </div>
                   {errors.password && (
-                    <p className="text-[11px] text-red-600 mt-0.5 font-medium">{errors.password.message}</p>
+                    <p className="text-[11px] text-red-400 mt-0.5 font-medium">{errors.password.message}</p>
                   )}
                 </div>
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full mt-1.5 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:from-purple-700 hover:via-pink-700 hover:to-rose-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-purple-500/25 flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer"
+                  className="w-full mt-2 bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:from-purple-700 hover:via-pink-700 hover:to-rose-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-all shadow-md shadow-purple-500/25 flex items-center justify-center gap-1.5 disabled:opacity-60 cursor-pointer"
                 >
                   {isLoading ? (
                     <span>Authenticating...</span>
@@ -206,44 +195,15 @@ export const LoginPage: React.FC = () => {
                   )}
                 </button>
               </form>
-
-              {/* Quick Fill Credentials - Immediate 1-Click Access */}
-              <div className="mt-4 pt-3.5 border-t border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
-                  Quick Fill Credentials
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => fillQuickAccount('admin@revoo.com', 'RevooAdmin@2026!')}
-                    className="p-2 border border-slate-200 rounded-xl hover:border-purple-300 hover:bg-purple-50/50 text-left transition cursor-pointer"
-                  >
-                    <div className="font-bold text-slate-900 text-[11px] flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-purple-600" /> Super Admin
-                    </div>
-                    <div className="text-[10px] text-slate-500 truncate mt-0.5">admin@revoo.com</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fillQuickAccount('inspector@revoo.com', 'Inspector@2026!')}
-                    className="p-2 border border-slate-200 rounded-xl hover:border-pink-300 hover:bg-pink-50/50 text-left transition cursor-pointer"
-                  >
-                    <div className="font-bold text-slate-900 text-[11px] flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-pink-600" /> Inspector
-                    </div>
-                    <div className="text-[10px] text-slate-500 truncate mt-0.5">inspector@revoo.com</div>
-                  </button>
-                </div>
-              </div>
             </div>
 
             {/* Card Footer */}
-            <div className="bg-slate-50 px-5 py-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
+            <div className="bg-[#07090e] px-5 py-2.5 border-t border-neutral-800/80 flex items-center justify-between text-[10px] text-neutral-400 font-medium">
               <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Encrypted TLS Session</span>
               </div>
-              <span className="font-mono text-[10px]">Genie Operations Hub</span>
+              <span className="font-mono text-[10px] text-neutral-400">Genie Operations Hub</span>
             </div>
           </div>
         </div>
