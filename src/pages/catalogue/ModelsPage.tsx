@@ -49,9 +49,11 @@ export const ModelsPage: React.FC = () => {
   const [releaseYear, setReleaseYear] = useState<number>(2024);
   const [imageUrl, setImageUrl] = useState('');
 
-  // Variant state
-  const [variantCapacity, setVariantCapacity] = useState('256GB');
-  const [variantPriceModifier, setVariantPriceModifier] = useState<number>(5000);
+  // Variant state (RAM & ROM / Storage)
+  const [variantRam, setVariantRam] = useState('8GB');
+  const [variantStorage, setVariantStorage] = useState('256GB');
+  const [variantCapacity, setVariantCapacity] = useState('8GB / 256GB');
+  const [variantPriceModifier, setVariantPriceModifier] = useState<number>(3500);
 
   const { data: brands } = useQuery<Brand[]>({
     queryKey: ['admin-brands'],
@@ -210,11 +212,14 @@ export const ModelsPage: React.FC = () => {
   const handleAddVariant = (e: React.FormEvent) => {
     e.preventDefault();
     if (!showVariantModal) return;
+    const finalCapacity = variantCapacity.trim() || `${variantRam} / ${variantStorage}`;
     createVariantMutation.mutate({
       modelId: showVariantModal._id,
       payload: {
         modelId: showVariantModal._id,
-        capacity: variantCapacity,
+        capacity: finalCapacity,
+        ram: variantRam,
+        storage: variantStorage,
         priceModifier: variantPriceModifier,
         isPublished: true,
       },
@@ -668,11 +673,11 @@ export const ModelsPage: React.FC = () => {
       {/* Add Variant Modal */}
       {showVariantModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start sm:items-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-sm w-full my-auto shadow-2xl border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl max-w-md w-full my-auto shadow-2xl border border-slate-100 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
-                  Add Storage Variant
+                  Add RAM & ROM Variant
                 </h3>
                 <p className="text-xs text-slate-500">{showVariantModal.name}</p>
               </div>
@@ -686,19 +691,59 @@ export const ModelsPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleAddVariant} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">RAM</label>
+                  <select
+                    value={variantRam}
+                    onChange={(e) => {
+                      setVariantRam(e.target.value);
+                      setVariantCapacity(`${e.target.value} / ${variantStorage}`);
+                    }}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                  >
+                    <option value="4GB">4GB RAM</option>
+                    <option value="6GB">6GB RAM</option>
+                    <option value="8GB">8GB RAM</option>
+                    <option value="12GB">12GB RAM</option>
+                    <option value="16GB">16GB RAM</option>
+                    <option value="24GB">24GB RAM</option>
+                    <option value="32GB">32GB RAM</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">ROM / Storage</label>
+                  <select
+                    value={variantStorage}
+                    onChange={(e) => {
+                      setVariantStorage(e.target.value);
+                      setVariantCapacity(`${variantRam} / ${e.target.value}`);
+                    }}
+                    className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white font-medium"
+                  >
+                    <option value="64GB">64GB ROM</option>
+                    <option value="128GB">128GB ROM</option>
+                    <option value="256GB">256GB ROM</option>
+                    <option value="512GB">512GB ROM</option>
+                    <option value="1TB">1TB ROM</option>
+                    <option value="2TB">2TB ROM</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Storage Capacity</label>
-                <select
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Variant Name (RAM / ROM)</label>
+                <input
+                  type="text"
                   value={variantCapacity}
                   onChange={(e) => setVariantCapacity(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs bg-white"
-                >
-                  <option value="64GB">64GB</option>
-                  <option value="128GB">128GB</option>
-                  <option value="256GB">256GB</option>
-                  <option value="512GB">512GB</option>
-                  <option value="1TB">1TB</option>
-                </select>
+                  placeholder="e.g. 8GB / 256GB"
+                  className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-900 bg-slate-50 focus:bg-white"
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  How this configuration will appear in customer selection (e.g. 8GB / 256GB).
+                </span>
               </div>
 
               <div>
@@ -707,11 +752,11 @@ export const ModelsPage: React.FC = () => {
                   type="number"
                   value={variantPriceModifier}
                   onChange={(e) => setVariantPriceModifier(Number(e.target.value))}
-                  placeholder="e.g. 5000"
+                  placeholder="e.g. 3500"
                   className="w-full p-2.5 border border-slate-300 rounded-lg text-xs font-mono font-bold"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Amount added to base price (₹{showVariantModal.basePrice.toLocaleString('en-IN')}).
+                  Amount added to base price (₹{showVariantModal.basePrice.toLocaleString('en-IN')}) for engine calculation. (Not displayed to customers).
                 </span>
               </div>
 
