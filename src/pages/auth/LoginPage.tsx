@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Lock, Mail, AlertCircle, ArrowRight, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { ThemeToggle } from '../../components/common/ThemeToggle';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid work email address'),
@@ -75,6 +76,11 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#07090E] text-white flex flex-col items-center justify-center p-3 sm:p-4 relative select-none">
+      {/* Top Right Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle showLabel />
+      </div>
+
       {/* Ambient glowing background blobs matching Genie brand colors */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] bg-purple-600/15 rounded-full blur-[130px] pointer-events-none" />
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[340px] h-[260px] bg-pink-600/10 rounded-full blur-[110px] pointer-events-none" />
@@ -89,7 +95,9 @@ export const LoginPage: React.FC = () => {
             <img
               src="/genie_splash_emblem.png"
               alt="Genie Symbol"
-              className={`absolute inset-0 w-full h-full object-contain transition-all duration-700 ease-out ${
+              draggable={false}
+              onContextMenu={(e) => e.preventDefault()}
+              className={`absolute inset-0 w-full h-full object-contain select-none pointer-events-none transition-all duration-700 ease-out ${
                 animStage >= 1
                   ? 'opacity-100 scale-100'
                   : 'opacity-0 scale-75'
@@ -105,7 +113,9 @@ export const LoginPage: React.FC = () => {
               <img
                 src="/genie_splash_text.png"
                 alt="Genie Text"
-                className="w-full h-full object-contain"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                className="w-full h-full object-contain select-none pointer-events-none"
               />
             </div>
 
@@ -118,7 +128,9 @@ export const LoginPage: React.FC = () => {
               <img
                 src="/genie_splash_smile.png"
                 alt="Genie Curve Line"
-                className="w-full h-full object-contain drop-shadow-[0_0_16px_rgba(236,72,153,0.6)]"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                className="w-full h-full object-contain drop-shadow-[0_0_16px_rgba(236,72,153,0.6)] select-none pointer-events-none"
               />
             </div>
           </div>

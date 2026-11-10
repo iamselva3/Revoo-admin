@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export const AdminLayout: React.FC = () => {
   const { admin, logout } = useAuth();
@@ -41,11 +42,13 @@ export const AdminLayout: React.FC = () => {
       {/* Sidebar */}
       <aside className="w-64 bg-slate-900 text-white flex flex-col flex-shrink-0 border-r border-slate-800">
         {/* Brand Header */}
-        <div className="h-16 flex items-center px-5 gap-3 border-b border-slate-800 bg-slate-950">
+        <div className="h-16 flex items-center px-5 gap-3 border-b border-slate-800 bg-slate-950 select-none">
           <img
             src="/genie-logo.png"
             alt="Genie"
-            className="h-9 w-9 object-contain rounded-md bg-white p-0.5"
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            className="h-9 w-9 object-contain rounded-md bg-white p-0.5 select-none pointer-events-none"
           />
           <div>
             <span className="font-extrabold text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-purple-400 to-pink-500">
@@ -107,22 +110,23 @@ export const AdminLayout: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 flex-shrink-0 shadow-sm">
+        <header className="h-16 bg-white dark:bg-black border-b border-slate-200 dark:border-neutral-900 flex items-center justify-between px-8 flex-shrink-0 shadow-sm transition-colors duration-200">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full flex items-center gap-1.5">
+            <span className="text-xs font-medium px-2 py-1 bg-green-50 dark:bg-emerald-950/40 text-green-700 dark:text-emerald-300 border border-green-200 dark:border-emerald-800/50 rounded-full flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               API Online
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-500 font-medium">
-              System Date: <strong className="text-slate-700">{new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+            <span className="text-xs text-slate-500 dark:text-neutral-400 font-medium hidden sm:inline-block">
+              System Date: <strong className="text-slate-700 dark:text-neutral-200">{new Date().toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
             </span>
+            <ThemeToggle showLabel />
           </div>
         </header>
 
         {/* Dynamic Route Content */}
-        <main className="flex-1 overflow-y-auto p-8 bg-slate-50">
+        <main className="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-black transition-colors duration-200">
           <Outlet />
         </main>
       </div>
