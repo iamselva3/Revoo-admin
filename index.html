@@ -7,6 +7,16 @@
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Genie Admin Portal – Operations & Buyback Management</title>
+    <script>
+      // Light by default. Apply dark before React mounts ONLY if the admin explicitly chose it
+      // (key is written by ThemeContext on toggle) — prevents a light→dark flash on load.
+      try {
+        if (localStorage.getItem('genie_admin_theme_choice') === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased font-sans">
     <div id="root"></div>

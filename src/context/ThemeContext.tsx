@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -9,14 +9,34 @@ interface ThemeContextType {
   isDark: boolean;
 }
 
+/**
+ * Only an explicit user choice (made via toggleTheme / setTheme) is persisted.
+ * Everyone defaults to light — the OS `prefers-color-scheme` is intentionally ignored,
+ * as is the legacy `genie_theme` key (which used to be written automatically).
+ * Keep this key in sync with the pre-mount script in admin/index.html.
+ */
+const THEME_CHOICE_KEY = 'genie_admin_theme_choice';
+
+const readStoredChoice = (): Theme => {
+  try {
+    return localStorage.getItem(THEME_CHOICE_KEY) === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+};
+
+const persistChoice = (theme: Theme) => {
+  try {
+    localStorage.setItem(THEME_CHOICE_KEY, theme);
+  } catch {
+    // Storage unavailable (private mode / blocked) — the choice just won't persist.
+  }
+};
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('genie_theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [theme, setThemeState] = useState<Theme>(readStoredChoice);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -27,16 +47,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove('dark');
       root.style.colorScheme = 'light';
     }
-    localStorage.setItem('genie_theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  const toggleTheme = useCallback(() => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    persistChoice(next);
+    setThemeState(next);
+  }, [theme]);
 
-  const setTheme = (t: Theme) => {
+  const setTheme = useCallback((t: Theme) => {
+    persistChoice(t);
     setThemeState(t);
-  };
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, isDark: theme === 'dark' }}>
@@ -52,4 +74,3 @@ export const useTheme = () => {
   }
   return context;
 };
-

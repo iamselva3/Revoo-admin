@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -52,6 +52,66 @@ const STANDARD_VARIANTS: Array<{ ram: string; storage: string; defaultModifier: 
   { ram: '16GB', storage: '1TB', defaultModifier: 20000 },
   { ram: '16GB', storage: '2TB', defaultModifier: 28000 },
 ];
+
+/*
+ * Pricing semantics (shared with web-app / mobile-app — do not change):
+ *   basePrice            = top-condition buyback price of the model's LOWEST variant
+ *   variant.priceModifier = ₹ added to basePrice for that variant
+ *   variant "Get up to"  = basePrice + priceModifier
+ *   model headline "up to" = basePrice + max(priceModifier over variants), or basePrice if none
+ */
+const formatINR = (n: number): string => (Number(n) || 0).toLocaleString('en-IN');
+
+const getModelUpToPrice = (m: SmartphoneModel): number => {
+  const modifiers = (m.variants || []).map((v) => Number(v.priceModifier) || 0);
+  return (Number(m.basePrice) || 0) + (modifiers.length > 0 ? Math.max(...modifiers) : 0);
+};
+
+/** "+₹3,500 vs base" / "−₹2,000 vs base" / "Same as base" */
+const describeModifier = (modifier: number): string => {
+  if (!modifier) return 'Same as base';
+  return `${modifier > 0 ? '+' : '−'}₹${formatINR(Math.abs(modifier))} vs base`;
+};
+
+/**
+ * Number input for rupee amounts that can be cleared and retyped freely: it only emits valid
+ * numbers, re-syncs when the controlling value changes (e.g. base price edited) and reverts to
+ * the current value on blur if left empty.
+ */
+const RupeeInput: React.FC<{
+  value: number;
+  onValueChange: (n: number) => void;
+  className?: string;
+  ariaLabel?: string;
+  placeholder?: string;
+}> = ({ value, onValueChange, className = '', ariaLabel, placeholder }) => {
+  const [text, setText] = useState<string>(String(value));
+
+  useEffect(() => {
+    setText((prev) => (prev.trim() !== '' && Number(prev) === value ? prev : String(value)));
+  }, [value]);
+
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        if (raw.trim() === '') return;
+        const n = Number(raw);
+        if (Number.isFinite(n)) onValueChange(n);
+      }}
+      onBlur={() => {
+        if (text.trim() === '' || !Number.isFinite(Number(text))) setText(String(value));
+      }}
+      aria-label={ariaLabel}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+};
 
 export const ModelsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -511,7 +571,7 @@ export const ModelsPage: React.FC = () => {
               <th className="px-6 py-3.5">Category</th>
               <th className="px-6 py-3.5">Variants Configured</th>
               <th className="px-6 py-3.5">Release Year</th>
-              <th className="px-6 py-3.5">Base Buyback Price</th>
+              <th className="px-6 py-3.5">Buyback Price (Up to)</th>
               <th className="px-6 py-3.5">Status</th>
               <th className="px-6 py-3.5 text-right">Actions</th>
             </tr>
@@ -595,8 +655,16 @@ export const ModelsPage: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-3.5 text-slate-500">{m.releaseYear}</td>
-                    <td className="px-6 py-3.5 font-bold text-revoo-700 font-mono text-sm">
-                      ₹{m.basePrice.toLocaleString('en-IN')}
+                    <td className="px-6 py-3.5 whitespace-nowrap">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Up to</span>
+                        <span className="font-mono font-bold text-sm text-revoo-700 dark:text-amber-400">
+                          ₹{formatINR(getModelUpToPrice(m))}
+                        </span>
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        from ₹{formatINR(m.basePrice)}
+                      </div>
                     </td>
                     <td className="px-6 py-3.5">
                       <span
@@ -709,17 +777,22 @@ export const ModelsPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Base Buyback Price (₹)</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label htmlFor="model-base-price" className="block text-xs font-semibold text-slate-700 mb-1">
+                      Base price — lowest variant, top condition (₹)
+                    </label>
                     <input
+                      id="model-base-price"
                       type="number"
                       required
                       value={basePrice}
                       onChange={(e) => setBasePrice(Number(e.target.value))}
                       className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-revoo-500"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Standard baseline reference price</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">
+                      Changing this shifts every variant&apos;s price below by the same amount.
+                    </span>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Release Year</label>
@@ -783,30 +856,47 @@ export const ModelsPage: React.FC = () => {
 
                 {/* Multi-Variant Checkbox Matrix Section */}
                 <div className="pt-3 border-t border-slate-200 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-900">
                         Hardware Variants & Selling Prices
                       </label>
                       <p className="text-[11px] text-slate-500">
-                        Tick the configurations available for this model. Customer selling prices are calculated in real time.
+                        Tick the configurations this model supports and type each variant&apos;s customer
+                        &ldquo;Get up to&rdquo; price (top condition).
                       </p>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      {variantsList.filter((v) => v.enabled).length} Configured
-                    </span>
+                    <div className="shrink-0 text-right space-y-1">
+                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {variantsList.filter((v) => v.enabled).length} Configured
+                      </span>
+                      {(() => {
+                        const enabledModifiers = variantsList
+                          .filter((v) => v.enabled)
+                          .map((v) => Number(v.priceModifier) || 0);
+                        const headline =
+                          (Number(basePrice) || 0) + (enabledModifiers.length > 0 ? Math.max(...enabledModifiers) : 0);
+                        return (
+                          <span className="block text-[10px] text-slate-500" title="Headline price shown to customers for this model">
+                            Headline: <strong className="font-mono text-slate-800">up to ₹{formatINR(headline)}</strong>
+                          </span>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 border border-slate-200/80 rounded-xl p-2 bg-slate-50/50">
                     {variantsList.map((v, idx) => {
-                      const effectiveSellingPrice = Math.max(0, Number(basePrice || 0) + Number(v.priceModifier || 0));
+                      const base = Number(basePrice) || 0;
+                      const modifier = Number(v.priceModifier) || 0;
+                      const customerUpTo = base + modifier;
                       return (
                         <div
                           key={v.id || idx}
                           className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-all ${
                             v.enabled
                               ? 'bg-white border-indigo-300 ring-1 ring-indigo-500/10 shadow-2xs'
-                              : 'bg-white/60 border-slate-200 opacity-60 hover:opacity-100'
+                              : 'bg-white/60 dark:bg-white/[0.03] border-slate-200 opacity-60 hover:opacity-100'
                           }`}
                         >
                           {/* Checkbox and Variant Label */}
@@ -831,38 +921,39 @@ export const ModelsPage: React.FC = () => {
                             </div>
                           </label>
 
-                          {/* Price Modifier Input */}
-                          <div className="flex items-center gap-2 shrink-0">
-                            {v.enabled && (
-                              <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-                                <span className="text-[10px] font-bold text-slate-400">±₹</span>
-                                <input
-                                  type="number"
-                                  value={v.priceModifier}
-                                  onChange={(e) => {
-                                    const updated = [...variantsList];
-                                    updated[idx].priceModifier = Number(e.target.value);
-                                    setVariantsList(updated);
-                                  }}
-                                  className="w-16 text-xs font-mono font-bold text-slate-800 bg-transparent focus:outline-none"
-                                  placeholder="0"
-                                />
-                              </div>
+                          {/* Customer "Get up to" price — admin types the absolute price; we store
+                              priceModifier = enteredPrice − basePrice (payload shape unchanged). */}
+                          <div className="shrink-0 text-right">
+                            {v.enabled ? (
+                              <>
+                                <div className="inline-flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-revoo-500 focus-within:border-transparent">
+                                  <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">Up to ₹</span>
+                                  <RupeeInput
+                                    value={customerUpTo}
+                                    onValueChange={(entered) =>
+                                      setVariantsList((prev) =>
+                                        prev.map((item, i) =>
+                                          i === idx ? { ...item, priceModifier: entered - (Number(basePrice) || 0) } : item
+                                        )
+                                      )
+                                    }
+                                    ariaLabel={`Customer up-to price for ${v.capacity}`}
+                                    placeholder="0"
+                                    className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent text-right focus:outline-none"
+                                  />
+                                </div>
+                                <div
+                                  className={`text-[10px] font-mono mt-0.5 ${
+                                    modifier < 0 ? 'text-amber-600' : 'text-slate-400'
+                                  }`}
+                                  title={modifier < 0 ? 'Below the base price — base should be the lowest variant' : undefined}
+                                >
+                                  {describeModifier(modifier)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-[10px] font-medium text-slate-400 italic">Not offered</span>
                             )}
-
-                            {/* Customer Selling Price Preview Badge */}
-                            <div
-                              className={`px-2.5 py-1 rounded-lg text-right min-w-[90px] ${
-                                v.enabled
-                                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
-                                  : 'bg-slate-100 text-slate-400 border border-slate-200'
-                              }`}
-                            >
-                              <div className="text-[9px] font-bold uppercase tracking-wider">Selling Price</div>
-                              <div className="text-xs font-mono font-bold">
-                                {v.enabled ? `₹${effectiveSellingPrice.toLocaleString('en-IN')}` : '—'}
-                              </div>
-                            </div>
                           </div>
                         </div>
                       );
@@ -912,14 +1003,17 @@ export const ModelsPage: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Modifier (₹)</label>
-                          <input
-                            type="number"
-                            value={customModifier}
-                            onChange={(e) => setCustomModifier(Number(e.target.value))}
-                            placeholder="3500"
+                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Up to price (₹)</label>
+                          <RupeeInput
+                            value={(Number(basePrice) || 0) + (Number(customModifier) || 0)}
+                            onValueChange={(entered) => setCustomModifier(entered - (Number(basePrice) || 0))}
+                            ariaLabel="Customer up-to price for custom variant"
+                            placeholder="0"
                             className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white font-mono"
                           />
+                          <span className="text-[10px] font-mono text-slate-400 mt-0.5 block">
+                            {describeModifier(Number(customModifier) || 0)}
+                          </span>
                         </div>
                       </div>
                       <div className="flex justify-end">
@@ -1043,16 +1137,33 @@ export const ModelsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Price Modifier (₹)</label>
-                <input
-                  type="number"
-                  value={variantPriceModifier}
-                  onChange={(e) => setVariantPriceModifier(Number(e.target.value))}
-                  placeholder="e.g. 3500"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold"
-                />
+                <label htmlFor="quick-variant-modifier" className="block text-xs font-semibold text-slate-700 mb-1">
+                  Price Modifier (₹)
+                </label>
+                <div className="flex items-stretch gap-2">
+                  <input
+                    id="quick-variant-modifier"
+                    type="number"
+                    value={variantPriceModifier}
+                    onChange={(e) => setVariantPriceModifier(Number(e.target.value))}
+                    placeholder="e.g. 3500"
+                    className="flex-1 min-w-0 p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold"
+                  />
+                  {/* Live customer-facing preview: basePrice + modifier */}
+                  <div
+                    aria-live="polite"
+                    className="shrink-0 flex flex-col justify-center px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-950/40 text-right"
+                  >
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                      Customer up-to price:
+                    </span>
+                    <span className="text-sm font-mono font-bold text-emerald-800 dark:text-emerald-200 whitespace-nowrap">
+                      ₹{formatINR((Number(showVariantModal.basePrice) || 0) + (Number(variantPriceModifier) || 0))}
+                    </span>
+                  </div>
+                </div>
                 <span className="text-[11px] text-slate-400 mt-1 block">
-                  Amount added to base price (₹{showVariantModal.basePrice.toLocaleString('en-IN')}) for valuation.
+                  Amount added to the base price (₹{formatINR(showVariantModal.basePrice)} — lowest variant, top condition).
                 </span>
               </div>
 
