@@ -43,6 +43,7 @@ export interface SmartphoneModel {
   releaseYear: number;
   imageUrl?: string;
   basePrice: number;
+  displayOrder?: number;
   isPublished: boolean;
   isArchived: boolean;
   variants?: Array<{

@@ -424,9 +424,8 @@ export const ModelsPage: React.FC = () => {
       modelName.includes('legion') ||
       modelName.includes('spectre') ||
       modelName.includes('envy') ||
-      modelName.includes('air') ||
-      modelName.includes('pro 14') ||
-      modelName.includes('pro 16')
+      modelName.includes('macbook air') ||
+      modelName.includes('macbook pro')
     )
       return 'laptop';
     return 'phone';
