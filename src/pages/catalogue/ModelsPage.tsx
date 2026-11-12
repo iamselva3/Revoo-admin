@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
+import { uploadImageFile } from '../../utils/uploadImage';
 import { SmartphoneModel, Brand } from '../../types';
 import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 
@@ -321,48 +322,22 @@ export const ModelsPage: React.FC = () => {
     setShowCustomVariantRow(false);
   };
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const maxDim = 800;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
-        };
-        img.onerror = reject;
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
+  // Photos go straight to the image store (Cloudflare R2); the model only keeps the URL
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const handleImageFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file);
-        setImageUrl(compressed);
-      } catch (err) {
-        console.error('Error compressing image:', err);
-      }
+    e.target.value = '';
+    if (!file) return;
+    setPhotoError(null);
+    setIsUploadingPhoto(true);
+    try {
+      setImageUrl(await uploadImageFile(file, 'devices', { name: name || slug || 'device', maxDim: 1000 }));
+    } catch (err: any) {
+      setPhotoError(err?.message || 'Photo upload failed. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -840,10 +815,10 @@ export const ModelsPage: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold border border-slate-300 transition">
-                        <Upload className="w-4 h-4 text-slate-600" />
-                        <span>Upload Photo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageFileUpload} />
+                      <label className={`inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold border border-slate-300 transition ${isUploadingPhoto ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-slate-200'}`}>
+                        <Upload className={`w-4 h-4 text-slate-600 ${isUploadingPhoto ? 'animate-pulse' : ''}`} />
+                        <span>{isUploadingPhoto ? 'Uploading…' : 'Upload Photo'}</span>
+                        <input type="file" accept="image/*" className="hidden" disabled={isUploadingPhoto} onChange={handleImageFileUpload} />
                       </label>
                       {imageUrl ? (
                         <>
@@ -862,6 +837,10 @@ export const ModelsPage: React.FC = () => {
                         <span className="text-xs text-slate-400">or paste an image URL below</span>
                       )}
                     </div>
+
+                    {photoError && (
+                      <p className="text-xs font-semibold text-red-600" role="alert">{photoError}</p>
+                    )}
 
                     <input
                       type="text"

@@ -47,7 +47,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await apiClient.post('/auth/admin/logout');
+      // Ends only this computer's session; other signed-in devices stay signed in
+      await apiClient.post('/auth/admin/logout', {
+        refreshToken: localStorage.getItem('revoo_admin_refresh_token'),
+      });
     } catch (err) {
       // Continue cleanup regardless
     } finally {

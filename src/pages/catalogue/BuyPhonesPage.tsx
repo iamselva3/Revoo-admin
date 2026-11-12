@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
+import { uploadImageFile } from '../../utils/uploadImage';
 import { RefurbishedProduct } from '../../types';
 
 export const BuyPhonesPage: React.FC = () => {
@@ -312,83 +313,30 @@ export const BuyPhonesPage: React.FC = () => {
     }
   };
 
-  // Image upload with compression
-  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Photos go straight to the image store (Cloudflare R2); the product only keeps the URLs
+  const uploadProductPhoto = async (e: React.ChangeEvent<HTMLInputElement>, onUploaded: (url: string) => void) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsCompressing(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxDim = 600;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height && width > maxDim) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else if (height > maxDim) {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
-          setImageUrl(compressedBase64);
-        }
-        setIsCompressing(false);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    if (!file) return;
+    setIsCompressing(true);
+    try {
+      onUploaded(await uploadImageFile(file, 'products', { name: name || 'product', maxDim: 1000 }));
+    } catch (err: any) {
+      setModalAlert({
+        isOpen: true,
+        title: 'Photo upload failed',
+        message: err?.message || 'Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
-  // Additional angle photo upload with client-side compression
-  const handleAddGalleryFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageFile = (e: React.ChangeEvent<HTMLInputElement>) => uploadProductPhoto(e, (url) => setImageUrl(url));
 
-    setIsCompressing(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const maxDim = 600;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height && width > maxDim) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else if (height > maxDim) {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
-          setGalleryImages((prev) => [...prev, compressedBase64]);
-        }
-        setIsCompressing(false);
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
+  const handleAddGalleryFile = (e: React.ChangeEvent<HTMLInputElement>) =>
+    uploadProductPhoto(e, (url) => setGalleryImages((prev) => [...prev, url]));
 
   const handleAddGalleryUrl = () => {
     if (newGalleryUrl.trim()) {

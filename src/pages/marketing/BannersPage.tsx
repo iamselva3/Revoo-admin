@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Sparkles, Smartphone, Eye, Flame, ShoppingBag, Upload, X } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
+import { uploadImageFile } from '../../utils/uploadImage';
 
 interface Banner {
   _id: string;
@@ -114,14 +115,16 @@ export const BannersPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleBannerImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Banner photos go straight to the image store (Cloudflare R2); the banner only keeps the URL
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormValues((prev) => ({ ...prev, imageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const url = await uploadImageFile(file, 'banners', { name: formValues.title || 'banner', maxDim: 1600 });
+      setFormValues((prev) => ({ ...prev, imageUrl: url }));
+    } catch (err: any) {
+      window.alert(err?.message || 'Banner photo upload failed. Please try again.');
     }
   };
 
