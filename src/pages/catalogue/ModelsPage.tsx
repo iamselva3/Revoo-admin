@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -730,17 +731,21 @@ export const ModelsPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Add or Edit Model Modal — model details on the left, variants & prices on the right */}
-      {(showAddModal || editingModel) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start lg:items-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[94vh] lg:h-[88vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
+      {/* Add or Edit Model Modal — model details on the left, variants & prices on the right.
+          Rendered into <body> so it covers the whole screen (the page wrapper would otherwise
+          offset the fixed overlay below the top bar). */}
+      {(showAddModal || editingModel) &&
+        createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start lg:items-center p-3 sm:p-4 lg:p-2 overflow-y-auto">
+          {/* Uses (almost) the full screen height so the variant list has room even on short laptop screens */}
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[calc(100dvh-1.5rem)] lg:h-[calc(100dvh-1rem)] lg:max-h-[880px] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between gap-4 px-6 sm:px-8 py-5 border-b border-slate-100 shrink-0 bg-white">
+            <div className="flex items-center justify-between gap-4 px-6 sm:px-8 py-4 [@media(max-height:720px)]:py-2.5 border-b border-slate-100 shrink-0 bg-white">
               <div className="min-w-0">
                 <h3 className="text-lg font-bold text-slate-900 truncate">
                   {editingModel ? `Edit Model: ${editingModel.name}` : 'Add Smartphone Model'}
                 </h3>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 [@media(max-height:720px)]:hidden">
                   {editingModel ? 'Update device specifications, base buyback price, photo, and supported variants.' : 'Add a new phone model and select which RAM & ROM variants it supports.'}
                 </p>
               </div>
@@ -762,7 +767,7 @@ export const ModelsPage: React.FC = () => {
             <form onSubmit={handleSaveModel} className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
                 {/* ---------- Left: model details & photo ---------- */}
-                <section className="p-6 sm:p-8 space-y-6 lg:overflow-y-auto lg:border-r lg:border-slate-200">
+                <section className="p-5 sm:p-6 space-y-5 lg:overflow-y-auto lg:border-r lg:border-slate-200">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Model details</p>
 
                   {/* Modern Brand Select */}
@@ -870,16 +875,17 @@ export const ModelsPage: React.FC = () => {
                 </section>
 
                 {/* ---------- Right: variants & selling prices ---------- */}
-                <section className="flex flex-col min-h-0 p-6 sm:p-8 bg-slate-50/50 border-t border-slate-200 lg:border-t-0 lg:overflow-hidden">
+                {/* The whole column scrolls (no small inner scroll box), so as many variants as fit are visible */}
+                <section className="flex flex-col min-h-0 p-5 sm:p-6 bg-slate-50/50 border-t border-slate-200 lg:border-t-0 lg:overflow-y-auto">
                   <div className="flex items-start justify-between gap-4 shrink-0">
                     <div className="min-w-0 flex-1">
                       <p className="text-base font-bold text-slate-900">Hardware Variants & Selling Prices</p>
-                      <p className="text-sm text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 mt-0.5 [@media(max-height:720px)]:hidden">
                         Tick the configurations this model supports and type each variant&apos;s customer
                         &ldquo;Get up to&rdquo; price (top condition).
                       </p>
                     </div>
-                    <div className="shrink-0 text-right space-y-1.5">
+                    <div className="shrink-0 text-right space-y-1">
                       <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                         {variantsList.filter((v) => v.enabled).length} Configured
                       </span>
@@ -898,7 +904,7 @@ export const ModelsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="mt-5 space-y-2.5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
+                  <div className="mt-4 space-y-2">
                     {variantsList.map((v, idx) => {
                       const base = Number(basePrice) || 0;
                       const modifier = Number(v.priceModifier) || 0;
@@ -906,14 +912,14 @@ export const ModelsPage: React.FC = () => {
                       return (
                         <div
                           key={v.id || idx}
-                          className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 rounded-2xl border transition-all ${
+                          className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 py-2.5 rounded-xl border transition-all ${
                             v.enabled
                               ? 'bg-white border-indigo-300 ring-1 ring-indigo-500/10 shadow-sm'
                               : 'bg-white/60 dark:bg-white/[0.03] border-slate-200 opacity-60 hover:opacity-100'
                           }`}
                         >
-                          {/* Checkbox and Variant Label */}
-                          <label className="flex items-center gap-3.5 cursor-pointer select-none min-w-0 flex-1">
+                          {/* Checkbox and Variant Label (one line: "8GB / 256GB  8GB RAM • 256GB ROM") */}
+                          <label className="flex items-center gap-3 cursor-pointer select-none min-w-0 flex-1">
                             <input
                               type="checkbox"
                               checked={v.enabled}
@@ -921,24 +927,32 @@ export const ModelsPage: React.FC = () => {
                                 const enabled = e.target.checked;
                                 setVariantsList((prev) => prev.map((item, i) => (i === idx ? { ...item, enabled } : item)));
                               }}
-                              className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
+                              className="w-[18px] h-[18px] rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
                             />
-                            <div className="min-w-0">
-                              <span className={`text-sm font-bold leading-snug block break-words ${v.enabled ? 'text-slate-900' : 'text-slate-500'}`}>
+                            <span className="min-w-0 leading-snug">
+                              <span className={`text-sm font-bold break-words ${v.enabled ? 'text-slate-900' : 'text-slate-500'}`}>
                                 {v.capacity}
                               </span>
-                              <span className="text-xs text-slate-400">
-                                {v.ram && v.storage ? `${v.ram} RAM • ${v.storage} ROM` : 'Configuration'}
-                              </span>
-                            </div>
+                              {v.ram && v.storage && (
+                                <span className="ml-2 text-xs text-slate-400 whitespace-nowrap">
+                                  {v.ram} RAM • {v.storage} ROM
+                                </span>
+                              )}
+                            </span>
                           </label>
 
                           {/* Customer "Get up to" price — admin types the absolute price; we store
                               priceModifier = enteredPrice − basePrice (payload shape unchanged). */}
-                          <div className="shrink-0 text-right ml-auto">
+                          <div className="shrink-0 ml-auto flex items-center gap-3">
                             {v.enabled ? (
                               <>
-                                <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-slate-300 focus-within:ring-2 focus-within:ring-revoo-500 focus-within:border-transparent">
+                                <span
+                                  className={`text-xs font-mono whitespace-nowrap ${modifier < 0 ? 'text-amber-600' : 'text-slate-400'}`}
+                                  title={modifier < 0 ? 'Below the base price — base should be the lowest variant' : undefined}
+                                >
+                                  {describeModifier(modifier)}
+                                </span>
+                                <div className="inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-revoo-500 focus-within:border-transparent">
                                   <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Up to ₹</span>
                                   <RupeeInput
                                     value={customerUpTo}
@@ -951,14 +965,8 @@ export const ModelsPage: React.FC = () => {
                                     }
                                     ariaLabel={`Customer up-to price for ${v.capacity}`}
                                     placeholder="0"
-                                    className="w-28 text-sm font-mono font-bold text-slate-900 bg-transparent text-right focus:outline-none"
+                                    className="w-24 text-sm font-mono font-bold text-slate-900 bg-transparent text-right focus:outline-none"
                                   />
-                                </div>
-                                <div
-                                  className={`text-xs font-mono mt-1 ${modifier < 0 ? 'text-amber-600' : 'text-slate-400'}`}
-                                  title={modifier < 0 ? 'Below the base price — base should be the lowest variant' : undefined}
-                                >
-                                  {describeModifier(modifier)}
                                 </div>
                               </>
                             ) : (
@@ -1043,7 +1051,7 @@ export const ModelsPage: React.FC = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50 shrink-0">
+              <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-3 border-t border-slate-100 bg-slate-50 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1069,7 +1077,8 @@ export const ModelsPage: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add Variant Modal */}
