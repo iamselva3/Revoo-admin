@@ -160,7 +160,7 @@ export const RequestsListPage: React.FC = () => {
                 data.data.map((req) => (
                   <tr key={req._id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-900 font-mono">
-                      {req.requestNumber}
+                      {req.requestNumber ? req.requestNumber.replace(/^REV-/i, 'GENIE-') : ''}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900">{req.customerDetails?.fullName || 'Customer'}</div>

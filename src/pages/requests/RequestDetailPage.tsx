@@ -87,7 +87,7 @@ export const RequestDetailPage: React.FC = () => {
       setSuggestedOffer(request.indicativeEstimate?.estimatedAmount || 0);
       setFinalOfferAmount(request.indicativeEstimate?.estimatedAmount || 0);
       setPaymentAmount(request.activeOfferId?.finalOfferedAmount || request.indicativeEstimate?.estimatedAmount || 0);
-      setReturnTracking(`RET-${request.requestNumber}`);
+      setReturnTracking(`RET-${request.requestNumber ? request.requestNumber.replace(/^REV-/i, 'GENIE-') : ''}`);
     }
   }, [request]);
 
@@ -243,7 +243,7 @@ export const RequestDetailPage: React.FC = () => {
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-mono font-bold text-slate-400">
-                  {request.requestNumber}
+                  {request.requestNumber ? request.requestNumber.replace(/^REV-/i, 'GENIE-') : ''}
                 </span>
                 <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">
                   {request.deviceDetails?.brandName} {request.deviceDetails?.modelName}
