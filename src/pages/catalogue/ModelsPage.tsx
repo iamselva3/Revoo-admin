@@ -20,16 +20,23 @@ import {
   Check,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { resolveImageUrl } from '../../utils/assetUrl';
 import { SmartphoneModel, Brand } from '../../types';
 import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 
-const resolveImageUrl = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
+/** Brand logo for dropdown options; shows the brand's first letter if the logo can't load. */
+const BrandOptionIcon: React.FC<{ name: string; logoUrl?: string }> = ({ name, logoUrl }) => {
+  const [failed, setFailed] = useState(false);
+  const src = resolveImageUrl(logoUrl);
+  if (!src || failed) {
+    return (
+      <span className="w-7 h-5 rounded-md bg-slate-200 text-[10px] font-bold text-slate-600 flex items-center justify-center">
+        {name.charAt(0).toUpperCase()}
+      </span>
+    );
   }
-  const backendBase = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
-  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  // Wider than tall so wordmark logos (Samsung, Oppo, Vivo) stay readable
+  return <img src={src} alt="" className="w-7 h-5 object-contain" onError={() => setFailed(true)} />;
 };
 
 interface VariantItemState {
@@ -456,14 +463,14 @@ export const ModelsPage: React.FC = () => {
     ...(brands || []).map((b) => ({
       value: b._id,
       label: b.name,
-      icon: b.logoUrl ? <img src={b.logoUrl} alt={b.name} className="w-4 h-4 object-contain rounded" /> : undefined,
+      icon: <BrandOptionIcon name={b.name} logoUrl={b.logoUrl} />,
     })),
   ];
 
   const modalBrandOptions: SelectOption[] = (brands || []).map((b) => ({
     value: b._id,
     label: b.name,
-    icon: b.logoUrl ? <img src={b.logoUrl} alt={b.name} className="w-4 h-4 object-contain rounded" /> : undefined,
+    icon: <BrandOptionIcon name={b.name} logoUrl={b.logoUrl} />,
   }));
 
   return (
@@ -723,17 +730,17 @@ export const ModelsPage: React.FC = () => {
         </table>
       </div>
 
-      {/* Add or Edit Model Modal */}
+      {/* Add or Edit Model Modal — model details on the left, variants & prices on the right */}
       {(showAddModal || editingModel) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start sm:items-center p-3 sm:p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-start lg:items-center p-3 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[94vh] lg:h-[88vh] flex flex-col shadow-2xl overflow-hidden border border-slate-100 my-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0 bg-white sticky top-0 z-10">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
+            <div className="flex items-center justify-between gap-4 px-6 sm:px-8 py-5 border-b border-slate-100 shrink-0 bg-white">
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-slate-900 truncate">
                   {editingModel ? `Edit Model: ${editingModel.name}` : 'Add Smartphone Model'}
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm text-slate-500">
                   {editingModel ? 'Update device specifications, base buyback price, photo, and supported variants.' : 'Add a new phone model and select which RAM & ROM variants it supports.'}
                 </p>
               </div>
@@ -744,129 +751,136 @@ export const ModelsPage: React.FC = () => {
                   setEditingModel(null);
                   resetForm();
                 }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                aria-label="Close"
+                className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSaveModel} className="flex flex-col flex-1 overflow-hidden">
-              <div className="overflow-y-auto p-6 space-y-4 flex-1">
-                {/* Modern Brand Select */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Manufacturer Brand</label>
-                  <ModernSelect
-                    value={brandId || brands?.[0]?._id || ''}
-                    onChange={(val) => setBrandId(String(val))}
-                    options={modalBrandOptions}
-                    placeholder="Select Manufacturer Brand..."
-                  />
-                </div>
+            <form onSubmit={handleSaveModel} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+                {/* ---------- Left: model details & photo ---------- */}
+                <section className="p-6 sm:p-8 space-y-6 lg:overflow-y-auto lg:border-r lg:border-slate-200">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Model details</p>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Model Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Galaxy S24 Ultra, iPhone 15 Pro, Nothing Phone (2a)"
-                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <label htmlFor="model-base-price" className="block text-xs font-semibold text-slate-700 mb-1">
-                      Base price — lowest variant, top condition (₹)
-                    </label>
-                    <input
-                      id="model-base-price"
-                      type="number"
-                      required
-                      value={basePrice}
-                      onChange={(e) => setBasePrice(Number(e.target.value))}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-revoo-500"
-                    />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">
-                      Changing this shifts every variant&apos;s price below by the same amount.
-                    </span>
-                  </div>
+                  {/* Modern Brand Select */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Release Year</label>
-                    <input
-                      type="number"
-                      value={releaseYear}
-                      onChange={(e) => setReleaseYear(Number(e.target.value))}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Manufacturer Brand</label>
+                    <ModernSelect
+                      value={brandId || brands?.[0]?._id || ''}
+                      onChange={(val) => setBrandId(String(val))}
+                      options={modalBrandOptions}
+                      placeholder="Select Manufacturer Brand..."
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Launch release year</span>
-                  </div>
-                </div>
-
-                {/* Device Photo Upload & Preview */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-700">Device Photo</label>
-
-                  {imageUrl && (
-                    <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                      <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                        <img src={imageUrl} alt="preview" className="w-full h-full object-contain" />
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <span className="text-xs text-slate-700 font-medium block truncate">Image loaded</span>
-                        <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Ready for live app
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setImageUrl('')}
-                        className="text-xs text-red-600 hover:text-red-700 font-semibold px-2 py-1 cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-300 transition">
-                      <Upload className="w-4 h-4 text-slate-600" />
-                      <span>Upload Photo</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageFileUpload}
-                      />
-                    </label>
-                    <span className="text-xs text-slate-400">or enter image URL below</span>
                   </div>
 
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://... or click Upload Photo above"
-                    className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-revoo-500"
-                  />
-                </div>
+                  <div>
+                    <label htmlFor="model-name" className="block text-sm font-semibold text-slate-700 mb-1.5">Model Name</label>
+                    <input
+                      id="model-name"
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Galaxy S24 Ultra, iPhone 15 Pro, Nothing Phone (2a)"
+                      className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                    />
+                  </div>
 
-                {/* Multi-Variant Checkbox Matrix Section */}
-                <div className="pt-3 border-t border-slate-200 space-y-2.5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-900">
-                        Hardware Variants & Selling Prices
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="sm:col-span-2">
+                      <label htmlFor="model-base-price" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Base price (₹)
                       </label>
-                      <p className="text-[11px] text-slate-500">
+                      <input
+                        id="model-base-price"
+                        type="number"
+                        required
+                        value={basePrice}
+                        onChange={(e) => setBasePrice(Number(e.target.value))}
+                        className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                      />
+                      <span className="text-xs text-slate-400 mt-1 block">
+                        Lowest variant, top condition. Changing it shifts every variant&apos;s price by the same amount.
+                      </span>
+                    </div>
+                    <div>
+                      <label htmlFor="model-release-year" className="block text-sm font-semibold text-slate-700 mb-1.5">Release Year</label>
+                      <input
+                        id="model-release-year"
+                        type="number"
+                        value={releaseYear}
+                        onChange={(e) => setReleaseYear(Number(e.target.value))}
+                        className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                      />
+                      <span className="text-xs text-slate-400 mt-1 block">Launch year</span>
+                    </div>
+                  </div>
+
+                  {/* Device Photo Upload & Preview */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-slate-700">Device Photo</label>
+
+                    <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                      {imageUrl ? (
+                        <img src={resolveImageUrl(imageUrl)} alt="Device preview" className="max-h-full max-w-full object-contain" />
+                      ) : (
+                        <div className="text-center text-slate-400">
+                          <ImageIcon className="mx-auto h-8 w-8" />
+                          <p className="mt-2 text-xs">No photo yet</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold border border-slate-300 transition">
+                        <Upload className="w-4 h-4 text-slate-600" />
+                        <span>Upload Photo</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageFileUpload} />
+                      </label>
+                      {imageUrl ? (
+                        <>
+                          <span className="text-xs text-emerald-600 font-semibold inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Ready for live app
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setImageUrl('')}
+                            className="ml-auto text-sm text-red-600 hover:text-red-700 font-semibold px-2 py-1 cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-slate-400">or paste an image URL below</span>
+                      )}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://... or /uploads/... (or click Upload Photo)"
+                      aria-label="Device photo URL"
+                      className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                    />
+                  </div>
+                </section>
+
+                {/* ---------- Right: variants & selling prices ---------- */}
+                <section className="flex flex-col min-h-0 p-6 sm:p-8 bg-slate-50/50 border-t border-slate-200 lg:border-t-0 lg:overflow-hidden">
+                  <div className="flex items-start justify-between gap-4 shrink-0">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-slate-900">Hardware Variants & Selling Prices</p>
+                      <p className="text-sm text-slate-500 mt-0.5">
                         Tick the configurations this model supports and type each variant&apos;s customer
                         &ldquo;Get up to&rdquo; price (top condition).
                       </p>
                     </div>
-                    <div className="shrink-0 text-right space-y-1">
-                      <span className="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    <div className="shrink-0 text-right space-y-1.5">
+                      <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                         {variantsList.filter((v) => v.enabled).length} Configured
                       </span>
                       {(() => {
@@ -876,7 +890,7 @@ export const ModelsPage: React.FC = () => {
                         const headline =
                           (Number(basePrice) || 0) + (enabledModifiers.length > 0 ? Math.max(...enabledModifiers) : 0);
                         return (
-                          <span className="block text-[10px] text-slate-500" title="Headline price shown to customers for this model">
+                          <span className="block text-xs text-slate-500" title="Headline price shown to customers for this model">
                             Headline: <strong className="font-mono text-slate-800">up to ₹{formatINR(headline)}</strong>
                           </span>
                         );
@@ -884,7 +898,7 @@ export const ModelsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 border border-slate-200/80 rounded-xl p-2 bg-slate-50/50">
+                  <div className="mt-5 space-y-2.5 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pr-2">
                     {variantsList.map((v, idx) => {
                       const base = Number(basePrice) || 0;
                       const modifier = Number(v.priceModifier) || 0;
@@ -892,29 +906,28 @@ export const ModelsPage: React.FC = () => {
                       return (
                         <div
                           key={v.id || idx}
-                          className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-all ${
+                          className={`flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3.5 rounded-2xl border transition-all ${
                             v.enabled
-                              ? 'bg-white border-indigo-300 ring-1 ring-indigo-500/10 shadow-2xs'
+                              ? 'bg-white border-indigo-300 ring-1 ring-indigo-500/10 shadow-sm'
                               : 'bg-white/60 dark:bg-white/[0.03] border-slate-200 opacity-60 hover:opacity-100'
                           }`}
                         >
                           {/* Checkbox and Variant Label */}
-                          <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0 flex-1">
+                          <label className="flex items-center gap-3.5 cursor-pointer select-none min-w-0 flex-1">
                             <input
                               type="checkbox"
                               checked={v.enabled}
                               onChange={(e) => {
-                                const updated = [...variantsList];
-                                updated[idx].enabled = e.target.checked;
-                                setVariantsList(updated);
+                                const enabled = e.target.checked;
+                                setVariantsList((prev) => prev.map((item, i) => (i === idx ? { ...item, enabled } : item)));
                               }}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                              className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
                             />
                             <div className="min-w-0">
-                              <span className={`text-xs font-bold block truncate ${v.enabled ? 'text-slate-900' : 'text-slate-500'}`}>
+                              <span className={`text-sm font-bold leading-snug block break-words ${v.enabled ? 'text-slate-900' : 'text-slate-500'}`}>
                                 {v.capacity}
                               </span>
-                              <span className="text-[10px] text-slate-400">
+                              <span className="text-xs text-slate-400">
                                 {v.ram && v.storage ? `${v.ram} RAM • ${v.storage} ROM` : 'Configuration'}
                               </span>
                             </div>
@@ -922,11 +935,11 @@ export const ModelsPage: React.FC = () => {
 
                           {/* Customer "Get up to" price — admin types the absolute price; we store
                               priceModifier = enteredPrice − basePrice (payload shape unchanged). */}
-                          <div className="shrink-0 text-right">
+                          <div className="shrink-0 text-right ml-auto">
                             {v.enabled ? (
                               <>
-                                <div className="inline-flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-revoo-500 focus-within:border-transparent">
-                                  <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">Up to ₹</span>
+                                <div className="inline-flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-slate-300 focus-within:ring-2 focus-within:ring-revoo-500 focus-within:border-transparent">
+                                  <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Up to ₹</span>
                                   <RupeeInput
                                     value={customerUpTo}
                                     onValueChange={(entered) =>
@@ -938,20 +951,18 @@ export const ModelsPage: React.FC = () => {
                                     }
                                     ariaLabel={`Customer up-to price for ${v.capacity}`}
                                     placeholder="0"
-                                    className="w-20 text-xs font-mono font-bold text-slate-900 bg-transparent text-right focus:outline-none"
+                                    className="w-28 text-sm font-mono font-bold text-slate-900 bg-transparent text-right focus:outline-none"
                                   />
                                 </div>
                                 <div
-                                  className={`text-[10px] font-mono mt-0.5 ${
-                                    modifier < 0 ? 'text-amber-600' : 'text-slate-400'
-                                  }`}
+                                  className={`text-xs font-mono mt-1 ${modifier < 0 ? 'text-amber-600' : 'text-slate-400'}`}
                                   title={modifier < 0 ? 'Below the base price — base should be the lowest variant' : undefined}
                                 >
                                   {describeModifier(modifier)}
                                 </div>
                               </>
                             ) : (
-                              <span className="text-[10px] font-medium text-slate-400 italic">Not offered</span>
+                              <span className="text-xs font-medium text-slate-400 italic">Not offered</span>
                             )}
                           </div>
                         </div>
@@ -960,77 +971,79 @@ export const ModelsPage: React.FC = () => {
                   </div>
 
                   {/* Add Custom Configuration Toggle */}
-                  {!showCustomVariantRow ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomVariantRow(true)}
-                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 mt-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Custom RAM & ROM Configuration
-                    </button>
-                  ) : (
-                    <div className="p-3 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-2 mt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-indigo-950">Add Custom Hardware Variant</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowCustomVariantRow(false)}
-                          className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">RAM</label>
-                          <input
-                            type="text"
-                            value={customRam}
-                            onChange={(e) => setCustomRam(e.target.value)}
-                            placeholder="e.g. 12GB"
-                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white"
-                          />
+                  <div className="shrink-0 mt-4">
+                    {!showCustomVariantRow ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowCustomVariantRow(true)}
+                        className="text-sm font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" /> Add Custom RAM & ROM Configuration
+                      </button>
+                    ) : (
+                      <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-indigo-950">Add Custom Hardware Variant</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowCustomVariantRow(false)}
+                            className="text-sm text-slate-400 hover:text-slate-600 cursor-pointer"
+                          >
+                            Cancel
+                          </button>
                         </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">ROM / Storage</label>
-                          <input
-                            type="text"
-                            value={customStorage}
-                            onChange={(e) => setCustomStorage(e.target.value)}
-                            placeholder="e.g. 512GB"
-                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">RAM</label>
+                            <input
+                              type="text"
+                              value={customRam}
+                              onChange={(e) => setCustomRam(e.target.value)}
+                              placeholder="e.g. 12GB"
+                              className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">ROM / Storage</label>
+                            <input
+                              type="text"
+                              value={customStorage}
+                              onChange={(e) => setCustomStorage(e.target.value)}
+                              placeholder="e.g. 512GB"
+                              className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-slate-600 block mb-1">Up to price (₹)</label>
+                            <RupeeInput
+                              value={(Number(basePrice) || 0) + (Number(customModifier) || 0)}
+                              onValueChange={(entered) => setCustomModifier(entered - (Number(basePrice) || 0))}
+                              ariaLabel="Customer up-to price for custom variant"
+                              placeholder="0"
+                              className="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-xl bg-white font-mono"
+                            />
+                            <span className="text-xs font-mono text-slate-400 mt-1 block">
+                              {describeModifier(Number(customModifier) || 0)}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-600 block mb-0.5">Up to price (₹)</label>
-                          <RupeeInput
-                            value={(Number(basePrice) || 0) + (Number(customModifier) || 0)}
-                            onValueChange={(entered) => setCustomModifier(entered - (Number(basePrice) || 0))}
-                            ariaLabel="Customer up-to price for custom variant"
-                            placeholder="0"
-                            className="w-full p-1.5 text-xs border border-slate-300 rounded-lg bg-white font-mono"
-                          />
-                          <span className="text-[10px] font-mono text-slate-400 mt-0.5 block">
-                            {describeModifier(Number(customModifier) || 0)}
-                          </span>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={handleAddCustomVariant}
+                            className="px-4 py-2 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 cursor-pointer"
+                          >
+                            Include This Variant
+                          </button>
                         </div>
                       </div>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={handleAddCustomVariant}
-                          className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 cursor-pointer"
-                        >
-                          Include This Variant
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </section>
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
+              <div className="flex items-center justify-end gap-3 px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1038,14 +1051,14 @@ export const ModelsPage: React.FC = () => {
                     setEditingModel(null);
                     resetForm();
                   }}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createModelMutation.isPending || updateModelMutation.isPending}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-xl shadow-sm transition cursor-pointer"
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-revoo-700 hover:bg-revoo-800 rounded-xl shadow-sm transition cursor-pointer"
                 >
                   {createModelMutation.isPending || updateModelMutation.isPending
                     ? 'Saving...'

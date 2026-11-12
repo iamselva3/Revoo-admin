@@ -25,6 +25,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { resolveImageUrl } from '../../utils/assetUrl';
 import { RefurbishedProduct } from '../../types';
 
 export const BuyPhonesPage: React.FC = () => {
@@ -588,7 +589,7 @@ export const BuyPhonesPage: React.FC = () => {
                   <div className="w-20 h-24 rounded-xl bg-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-200/80">
                     {item.imageUrl ? (
                       <img
-                        src={item.imageUrl}
+                        src={resolveImageUrl(item.imageUrl)}
                         alt={item.name}
                         className="w-full h-full object-contain p-1"
                         onError={(e) => {
@@ -976,7 +977,7 @@ export const BuyPhonesPage: React.FC = () => {
                   {imageUrl && (
                     <div className="mt-2 flex items-center justify-between p-2 bg-white rounded-xl border border-slate-200">
                       <div className="flex items-center gap-3">
-                        <img src={imageUrl} alt="preview" className="w-12 h-14 object-contain rounded-lg bg-slate-50 p-1 border border-slate-200" />
+                        <img src={resolveImageUrl(imageUrl)} alt="preview" className="w-12 h-14 object-contain rounded-lg bg-slate-50 p-1 border border-slate-200" />
                         <div>
                           <span className="text-xs font-bold text-slate-800 block">Primary Front Angle</span>
                           <span className="text-[10px] text-slate-400 block font-mono">Will be shown on catalogue grid & first screen</span>

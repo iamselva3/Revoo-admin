@@ -2,16 +2,8 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Check, X, Smartphone, Layers, Edit2, Sparkles, Tag, CheckCircle2, XCircle, Upload } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { resolveImageUrl } from '../../utils/assetUrl';
 import { Brand } from '../../types';
-
-const resolveImageUrl = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  const backendBase = (apiClient.defaults.baseURL || '').replace(/\/api\/v1\/?$/, '');
-  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
-};
 
 interface Category {
   _id: string;

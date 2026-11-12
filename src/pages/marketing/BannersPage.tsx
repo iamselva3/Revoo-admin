@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Sparkles, Smartphone, Eye, Flame, ShoppingBag, Upload, X } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { resolveImageUrl } from '../../utils/assetUrl';
 
 interface Banner {
   _id: string;
@@ -317,7 +318,7 @@ export const BannersPage: React.FC = () => {
                     {formValues.imageUrl && (
                       <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-lg">
                         <div className="w-14 h-10 rounded bg-white border border-slate-200 overflow-hidden shrink-0">
-                          <img src={formValues.imageUrl} alt="banner" className="w-full h-full object-cover" />
+                          <img src={resolveImageUrl(formValues.imageUrl)} alt="banner" className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 overflow-hidden">
                           <span className="text-xs text-slate-700 font-medium block truncate">Banner Photo Loaded</span>
@@ -511,7 +512,7 @@ export const BannersPage: React.FC = () => {
 
                       {formValues.imageUrl ? (
                         <img
-                          src={formValues.imageUrl}
+                          src={resolveImageUrl(formValues.imageUrl)}
                           alt="preview"
                           className="w-full h-24 object-cover rounded-xl border border-slate-800"
                         />

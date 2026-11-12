@@ -16,6 +16,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { resolveImageUrl } from '../../utils/assetUrl';
 
 export const PopupsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -382,7 +383,7 @@ export const PopupsPage: React.FC = () => {
               {imageUrl && (
                 <div className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg">
                   <div className="w-16 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0">
-                    <img src={imageUrl} alt="Poster" className="w-full h-full object-cover" />
+                    <img src={resolveImageUrl(imageUrl)} alt="Poster" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <span className="text-xs text-slate-800 font-semibold block truncate">Custom Poster Loaded</span>
@@ -508,7 +509,7 @@ export const PopupsPage: React.FC = () => {
                 {/* Poster Image or Fire icon */}
                 {imageUrl ? (
                   <div className="w-full h-28 rounded-xl overflow-hidden border border-slate-800">
-                    <img src={imageUrl} alt="preview" className="w-full h-full object-cover" />
+                    <img src={resolveImageUrl(imageUrl)} alt="preview" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/30">
