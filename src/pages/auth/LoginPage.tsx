@@ -48,7 +48,7 @@ export const LoginPage: React.FC = () => {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'admin@revoo.com',
+      email: 'admin@genie.com',
       password: '',
     },
   });
@@ -153,7 +153,7 @@ export const LoginPage: React.FC = () => {
                     <input
                       type="email"
                       {...register('email')}
-                      placeholder="admin@revoo.com"
+                      placeholder="admin@genie.com"
                       className="w-full pl-9 pr-3 py-2 bg-[#12141e] border border-neutral-700/80 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-[#161926] focus:border-purple-500 transition-all font-medium"
                     />
                   </div>
