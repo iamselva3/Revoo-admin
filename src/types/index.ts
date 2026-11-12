@@ -207,19 +207,26 @@ export interface BuybackRequest {
     imeiOrSerial?: string;
   };
   declaredCondition: {
-    displayCondition: string;
-    bodyCondition: string;
-    batteryHealth: string;
-    functionalFaults: {
-      frontCameraFaulty: boolean;
-      backCameraFaulty: boolean;
-      faceIdOrFingerprintFaulty: boolean;
-      speakerOrMicFaulty: boolean;
-      chargingPortFaulty: boolean;
-      wirelessOrBluetoothFaulty: boolean;
+    displayCondition?: string;
+    bodyCondition?: string;
+    screenDisplayCondition?: string;
+    touchGlassCondition?: string;
+    backPanelCondition?: string;
+    sidePanelCondition?: string;
+    batteryHealth?: string;
+    summary?: Array<{ title: string; items: string[] }>;
+    basicQuestions?: any;
+    hardwareFaults?: any;
+    functionalFaults?: {
+      frontCameraFaulty?: boolean;
+      backCameraFaulty?: boolean;
+      faceIdOrFingerprintFaulty?: boolean;
+      speakerOrMicFaulty?: boolean;
+      chargingPortFaulty?: boolean;
+      wirelessOrBluetoothFaulty?: boolean;
     };
-    hasOriginalBox: boolean;
-    hasOriginalCharger: boolean;
+    hasOriginalBox?: boolean;
+    hasOriginalCharger?: boolean;
     additionalNotes?: string;
   };
   indicativeEstimate: {

@@ -222,21 +222,21 @@ export const DashboardPage: React.FC = () => {
                       {req.requestNumber}
                     </td>
                     <td className="px-6 py-3.5">
-                      <div className="font-medium text-slate-800">{req.customerDetails.fullName}</div>
-                      <div className="text-[11px] text-slate-500">{req.customerDetails.phone}</div>
+                      <div className="font-medium text-slate-800">{req.customerDetails?.fullName || 'Customer'}</div>
+                      <div className="text-[11px] text-slate-500">{req.customerDetails?.phone || ''}</div>
                     </td>
                     <td className="px-6 py-3.5 font-medium text-slate-900">
-                      {req.deviceDetails.brandName} {req.deviceDetails.modelName}
+                      {req.deviceDetails?.brandName} {req.deviceDetails?.modelName}
                       <span className="ml-1 text-[11px] text-slate-500 font-normal">
-                        ({req.deviceDetails.storageCapacity})
+                        ({req.deviceDetails?.storageCapacity || 'Standard'})
                       </span>
                     </td>
                     <td className="px-6 py-3.5 font-bold text-revoo-700 font-mono">
-                      ₹{req.indicativeEstimate.estimatedAmount.toLocaleString('en-IN')}
+                      ₹{req.indicativeEstimate?.estimatedAmount?.toLocaleString('en-IN') || 0}
                     </td>
                     <td className="px-6 py-3.5">
                       <span className="inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                        {req.status.replace(/_/g, ' ')}
+                        {(req.status || 'SUBMITTED').replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-slate-500">

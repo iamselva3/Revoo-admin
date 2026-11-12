@@ -163,24 +163,29 @@ export const RequestsListPage: React.FC = () => {
                       {req.requestNumber}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-slate-900">{req.customerDetails.fullName}</div>
-                      <div className="text-[11px] text-slate-500">{req.customerDetails.phone}</div>
+                      <div className="font-semibold text-slate-900">{req.customerDetails?.fullName || 'Customer'}</div>
+                      <div className="text-[11px] text-slate-500">{req.customerDetails?.phone || ''}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900">
-                        {req.deviceDetails.brandName} {req.deviceDetails.modelName}
+                        {req.deviceDetails?.brandName} {req.deviceDetails?.modelName}
                       </div>
                       <div className="text-[11px] text-slate-500 font-mono">
-                        {req.deviceDetails.storageCapacity}
+                        {req.deviceDetails?.storageCapacity || 'Standard'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-[11px] text-slate-700">
-                        Screen: {req.declaredCondition.displayCondition.replace(/_/g, ' ')}
+                        Screen:{' '}
+                        {(
+                          req.declaredCondition?.displayCondition ||
+                          req.declaredCondition?.screenDisplayCondition ||
+                          'Good'
+                        ).replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-revoo-700 font-mono text-sm">
-                      ₹{req.indicativeEstimate.estimatedAmount.toLocaleString('en-IN')}
+                      ₹{req.indicativeEstimate?.estimatedAmount?.toLocaleString('en-IN') || 0}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -188,7 +193,7 @@ export const RequestsListPage: React.FC = () => {
                           req.status
                         )}`}
                       >
-                        {req.status.replace(/_/g, ' ')}
+                        {(req.status || 'SUBMITTED').replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 whitespace-nowrap">
