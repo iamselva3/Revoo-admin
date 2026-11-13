@@ -816,24 +816,28 @@ export const PricingPage: React.FC = () => {
             })}
           </div>
 
-          {/* 4. Original Accessories Bonus */}
+          {/* 4. Missing accessories (stored as deductions.accessoriesBonus for compatibility) */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                4. Original Accessories Bonus (+₹)
+                4. Missing Original Accessories (−₹)
               </h3>
-              <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                Direct Cash Bonus (+₹)
+              <span className="text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                Taken off if missing
               </span>
             </div>
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              The price already includes the original charger and box. If the customer doesn&apos;t have one, this amount
+              is taken off (never more than 5% of the phone&apos;s price).
+            </p>
             {[
-              { key: 'hasOriginalCharger', label: 'Original Charger of Device' },
-              { key: 'hasOriginalBox', label: 'Original Box of Device' },
+              { key: 'hasOriginalCharger', label: 'No original charger' },
+              { key: 'hasOriginalBox', label: 'No box with same IMEI' },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between text-xs py-2">
                 <span className="text-slate-700 font-medium">{label}</span>
                 <div className="relative flex items-center">
-                  <span className="absolute left-2.5 text-emerald-600 font-bold text-xs pointer-events-none">+₹</span>
+                  <span className="absolute left-2.5 text-red-600 font-bold text-xs pointer-events-none">−₹</span>
                   <input
                     type="number"
                     value={accessoriesBonus[key] ?? 500}
@@ -849,7 +853,7 @@ export const PricingPage: React.FC = () => {
                         setAccessoriesBonus((prev) => ({ ...prev, [key]: 0 }));
                       }
                     }}
-                    className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-emerald-700 bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                    className="w-28 pl-7 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono font-bold text-xs text-red-700 bg-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
                   />
                 </div>
               </div>
