@@ -47,9 +47,9 @@ export const AdminLayout: React.FC = () => {
    */
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans">
-      {/* Sidebar Rail Container: Reserves 64px width in the layout */}
-      <div className="relative shrink-0 w-16 z-30">
-        <aside className="absolute inset-y-0 left-0 w-16 hover:w-64 group/sidebar transition-[width] duration-300 ease-in-out bg-genie-dark text-white flex flex-col border-r border-white/10 hover:shadow-2xl hover:shadow-black/70 select-none overflow-x-hidden">
+      {/* Sidebar: 64px rail that widens on hover and pushes the page to the right (never covers it) */}
+      <div className="group/sidebar relative shrink-0 w-16 hover:w-64 transition-[width] duration-300 ease-in-out z-30">
+        <aside className="absolute inset-0 bg-genie-dark text-white flex flex-col border-r border-white/10 select-none overflow-x-hidden">
           {/* Brand Header */}
           <div className="h-16 flex items-center px-3.5 group-hover/sidebar:px-5 border-b border-white/10 select-none transition-all duration-300">
             <div className="w-9 h-9 shrink-0 flex items-center justify-center">
