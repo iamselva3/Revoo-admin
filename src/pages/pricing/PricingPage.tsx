@@ -18,6 +18,16 @@ import {
 import { apiClient } from '../../api/client';
 import { SmartphoneModel, PricingRule } from '../../types';
 
+// Same bands and wording as the "How old is your phone?" question on the website
+const DEVICE_AGE_BANDS = [
+  { key: 'BELOW_3_MONTHS', label: 'Below 3 months' },
+  { key: '3_TO_6_MONTHS', label: '3 to 6 months' },
+  { key: '6_TO_11_MONTHS', label: '6 to 11 months' },
+  { key: 'ABOVE_11_MONTHS', label: 'Above 11 months' },
+] as const;
+const zeroAgePercentages = (): Record<string, number | string> =>
+  Object.fromEntries(DEVICE_AGE_BANDS.map((b) => [b.key, 0]));
+
 export const PricingPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedModelId, setSelectedModelId] = useState<string>('');
@@ -203,6 +213,9 @@ export const PricingPage: React.FC = () => {
     wirelessOrBluetoothFaulty: 7,
   });
 
+  // Phone age: % of the price taken off for each age band
+  const [deviceAgePercentages, setDeviceAgePercentages] = useState<Record<string, number | string>>(zeroAgePercentages);
+
   // Accessories Bonus stays as direct price tag (₹)
   const [accessoriesBonus, setAccessoriesBonus] = useState<Record<string, number | string>>({
     hasOriginalBox: 500,
@@ -294,9 +307,20 @@ export const PricingPage: React.FC = () => {
       if (pricingRule.deductions?.accessoriesBonus) {
         setAccessoriesBonus(pricingRule.deductions.accessoriesBonus);
       }
+
+      const savedAge: Record<string, unknown> = dp?.deviceAge || {};
+      setDeviceAgePercentages(
+        Object.fromEntries(
+          DEVICE_AGE_BANDS.map(({ key }) => {
+            const v = Number(savedAge[key]);
+            return [key, savedAge[key] !== undefined && savedAge[key] !== null && Number.isFinite(v) ? v : 0];
+          })
+        )
+      );
     } else if (selectedModel) {
       setBasePrice(selectedModel.basePrice || 45000);
       setStorageAdj(0);
+      setDeviceAgePercentages(zeroAgePercentages());
     }
   }, [pricingRule, selectedModel]);
 
@@ -414,6 +438,8 @@ export const PricingPage: React.FC = () => {
         wifiOrBluetoothNotWorking: Number(hardwareFaultPercentages.wifiOrBluetoothNotWorking) || 0,
         vibratorNotWorking: Number(hardwareFaultPercentages.vibratorNotWorking) || 0,
       },
+
+      deviceAge: Object.fromEntries(DEVICE_AGE_BANDS.map(({ key }) => [key, Number(deviceAgePercentages[key]) || 0])),
 
       display: {
         FLAWLESS: Number(displayPercentages.FLAWLESS) || 0,
@@ -904,6 +930,70 @@ export const PricingPage: React.FC = () => {
                         onBlur={() => {
                           if (hardwareFaultPercentages[key] === '' || isNaN(Number(hardwareFaultPercentages[key]))) {
                             setHardwareFaultPercentages((prev) => ({ ...prev, [key]: 0 }));
+                          }
+                        }}
+                        className="w-14 p-1 pr-3 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"
+                      />
+                      <span className="absolute right-1 text-slate-400 font-bold text-[9px] pointer-events-none">%</span>
+                    </div>
+                    <input
+                      type="text"
+                      readOnly
+                      disabled
+                      value={`₹ ${calcRupees.toLocaleString('en-IN')}`}
+                      className="w-20 p-1 bg-slate-100 border border-slate-200 rounded text-right font-mono font-bold text-[11px] text-slate-500 cursor-not-allowed select-none"
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 6. Phone age (customer must answer "How old is your phone?") */}
+        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-slate-900">6. Phone Age Deductions</h3>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                Customer must answer
+              </span>
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                % of Base • Auto ₹
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] leading-relaxed text-slate-500">
+            Every customer must say how old the phone is (from the bill date). This % of the phone&apos;s price is taken
+            off for the age they pick. 0% means nothing is taken off.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {DEVICE_AGE_BANDS.map(({ key, label }) => {
+              const pct = deviceAgePercentages[key] ?? 0;
+              const calcRupees = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
+              return (
+                <div key={key} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-slate-700 font-medium text-xs pr-2">{label}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        required
+                        min={0}
+                        max={90}
+                        step="any"
+                        aria-label={`${label} (% taken off)`}
+                        value={pct}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) =>
+                          setDeviceAgePercentages((prev) => ({
+                            ...prev,
+                            [key]: cleanNumberInput(e.target.value, 90),
+                          }))
+                        }
+                        onBlur={() => {
+                          if (deviceAgePercentages[key] === '' || isNaN(Number(deviceAgePercentages[key]))) {
+                            setDeviceAgePercentages((prev) => ({ ...prev, [key]: 0 }));
                           }
                         }}
                         className="w-14 p-1 pr-3 border border-slate-300 rounded text-right font-mono font-bold text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none bg-white"

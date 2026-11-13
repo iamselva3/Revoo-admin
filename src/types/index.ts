@@ -157,6 +157,8 @@ export interface PricingRule {
       wifiOrBluetoothNotWorking?: number;
       vibratorNotWorking?: number;
     };
+    /** % of the phone's price taken off for each age band the customer can pick. */
+    deviceAge?: Partial<Record<'BELOW_3_MONTHS' | '3_TO_6_MONTHS' | '6_TO_11_MONTHS' | 'ABOVE_11_MONTHS', number>>;
     display: {
       FLAWLESS: number;
       MINOR_SCRATCHES: number;
