@@ -950,13 +950,13 @@ export const PricingPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 6. Phone age (customer must answer "How old is your phone?") */}
+        {/* 6. Phone age ("How old is your phone?" — asked when the warranty is valid, then required) */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
             <h3 className="text-sm font-bold text-slate-900">6. Phone Age Deductions</h3>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
-                Customer must answer
+                Required when under warranty
               </span>
               <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 % of Base • Auto ₹
@@ -964,8 +964,8 @@ export const PricingPage: React.FC = () => {
             </div>
           </div>
           <p className="text-[11px] leading-relaxed text-slate-500">
-            Every customer must say how old the phone is (from the bill date). This % of the phone&apos;s price is taken
-            off for the age they pick. 0% means nothing is taken off.
+            When a customer says the phone has a valid warranty, they must pick how old it is (from the bill date). This
+            % of the phone&apos;s price is taken off for the age they pick. 0% means nothing is taken off.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             {DEVICE_AGE_BANDS.map(({ key, label }) => {
