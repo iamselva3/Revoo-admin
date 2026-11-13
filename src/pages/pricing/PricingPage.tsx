@@ -17,16 +17,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { SmartphoneModel, PricingRule } from '../../types';
-
-// Same bands and wording as the "How old is your phone?" question on the website
-const DEVICE_AGE_BANDS = [
-  { key: 'BELOW_3_MONTHS', label: 'Below 3 months' },
-  { key: '3_TO_6_MONTHS', label: '3 to 6 months' },
-  { key: '6_TO_11_MONTHS', label: '6 to 11 months' },
-  { key: 'ABOVE_11_MONTHS', label: 'Above 11 months' },
-] as const;
-const zeroAgePercentages = (): Record<string, number | string> =>
-  Object.fromEntries(DEVICE_AGE_BANDS.map((b) => [b.key, 0]));
+import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, ageFormValues, agePayload, zeroAgePercentages } from '../../utils/deviceAge';
 
 export const PricingPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -308,15 +299,8 @@ export const PricingPage: React.FC = () => {
         setAccessoriesBonus(pricingRule.deductions.accessoriesBonus);
       }
 
-      const savedAge: Record<string, unknown> = dp?.deviceAge || {};
-      setDeviceAgePercentages(
-        Object.fromEntries(
-          DEVICE_AGE_BANDS.map(({ key }) => {
-            const v = Number(savedAge[key]);
-            return [key, savedAge[key] !== undefined && savedAge[key] !== null && Number.isFinite(v) ? v : 0];
-          })
-        )
-      );
+      // Shared with the model editor (stored on the model)
+      setDeviceAgePercentages(ageFormValues(dp?.deviceAge));
     } else if (selectedModel) {
       setBasePrice(selectedModel.basePrice || 45000);
       setStorageAdj(0);
@@ -331,6 +315,9 @@ export const PricingPage: React.FC = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pricing-rule', selectedModelId] });
       queryClient.invalidateQueries({ queryKey: ['pricing-history', selectedModelId] });
+      // Phone-age % are shown in the model editor too
+      queryClient.invalidateQueries({ queryKey: ['admin-models'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-models-list'] });
       setSuccessMsg(`Pricing successfully updated to version ${data.data.version}.`);
       setReasonForChange('');
       setTimeout(() => setSuccessMsg(null), 4000);
@@ -439,7 +426,7 @@ export const PricingPage: React.FC = () => {
         vibratorNotWorking: Number(hardwareFaultPercentages.vibratorNotWorking) || 0,
       },
 
-      deviceAge: Object.fromEntries(DEVICE_AGE_BANDS.map(({ key }) => [key, Number(deviceAgePercentages[key]) || 0])),
+      deviceAge: agePayload(deviceAgePercentages),
 
       display: {
         FLAWLESS: Number(displayPercentages.FLAWLESS) || 0,
@@ -980,7 +967,7 @@ export const PricingPage: React.FC = () => {
                         type="number"
                         required
                         min={0}
-                        max={90}
+                        max={DEVICE_AGE_MAX_PCT}
                         step="any"
                         aria-label={`${label} (% taken off)`}
                         value={pct}
@@ -988,7 +975,7 @@ export const PricingPage: React.FC = () => {
                         onChange={(e) =>
                           setDeviceAgePercentages((prev) => ({
                             ...prev,
-                            [key]: cleanNumberInput(e.target.value, 90),
+                            [key]: cleanNumberInput(e.target.value, DEVICE_AGE_MAX_PCT),
                           }))
                         }
                         onBlur={() => {

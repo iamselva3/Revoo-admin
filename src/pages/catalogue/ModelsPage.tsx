@@ -24,6 +24,7 @@ import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
 import { uploadImageFile } from '../../utils/uploadImage';
 import { SmartphoneModel, Brand } from '../../types';
+import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, ageFormValues, agePayload, zeroAgePercentages } from '../../utils/deviceAge';
 import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 
 /** Brand logo for dropdown options; shows the brand's first letter if the logo can't load. */
@@ -140,6 +141,8 @@ export const ModelsPage: React.FC = () => {
   const [basePrice, setBasePrice] = useState<number>(40000);
   const [releaseYear, setReleaseYear] = useState<number>(2024);
   const [imageUrl, setImageUrl] = useState('');
+  // "How old is your phone?" — % of the price taken off per age (shared with the Pricing page)
+  const [ageDeductions, setAgeDeductions] = useState<Record<string, number | string>>(zeroAgePercentages);
 
   // Multi-variant checkbox matrix state
   const [variantsList, setVariantsList] = useState<VariantItemState[]>([]);
@@ -186,6 +189,8 @@ export const ModelsPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-models'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-models-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pricing-rule'] });
       setEditingModel(null);
       resetForm();
     },
@@ -226,6 +231,7 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(40000);
     setReleaseYear(2024);
     setImageUrl('');
+    setAgeDeductions(zeroAgePercentages());
     setVariantsList(
       STANDARD_VARIANTS.map((v) => ({
         id: `${v.ram}-${v.storage}`,
@@ -253,6 +259,7 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(m.basePrice);
     setReleaseYear(m.releaseYear);
     setImageUrl(m.imageUrl || '');
+    setAgeDeductions(ageFormValues(m.deviceAgeDeductions));
 
     // Pre-populate variants
     const existingVariants = m.variants || [];
@@ -359,6 +366,7 @@ export const ModelsPage: React.FC = () => {
       basePrice: Number(basePrice),
       releaseYear: Number(releaseYear),
       imageUrl,
+      deviceAgeDeductions: agePayload(ageDeductions),
       isPublished: true,
       variants: selectedVariants,
     };
@@ -796,6 +804,62 @@ export const ModelsPage: React.FC = () => {
                         className="w-full px-3.5 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-revoo-500"
                       />
                       <span className="text-xs text-slate-400 mt-1 block">Launch year</span>
+                    </div>
+                  </div>
+
+                  {/* Phone age deduction (customer picks it when the warranty is valid) */}
+                  <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Phone age deduction</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Customers with a valid warranty must pick how old the phone is. This % of the price is taken
+                        off. 0% = nothing taken off.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {DEVICE_AGE_BANDS.map(({ key, label }) => {
+                        const pct = ageDeductions[key] ?? 0;
+                        const amount = Math.round(((Number(basePrice) || 0) * (Number(pct) || 0)) / 100);
+                        return (
+                          <div key={key} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <label htmlFor={`age-${key}`} className="block text-xs font-semibold text-slate-600">
+                              {label}
+                            </label>
+                            <div className="mt-1.5 flex items-center gap-2">
+                              <div className="relative">
+                                <input
+                                  id={`age-${key}`}
+                                  type="number"
+                                  required
+                                  min={0}
+                                  max={DEVICE_AGE_MAX_PCT}
+                                  step="any"
+                                  value={pct}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const n = Number(raw);
+                                    setAgeDeductions((prev) => ({
+                                      ...prev,
+                                      [key]: raw === '' ? '' : Number.isFinite(n) ? Math.min(DEVICE_AGE_MAX_PCT, Math.max(0, n)) : prev[key],
+                                    }));
+                                  }}
+                                  onBlur={() => {
+                                    if (ageDeductions[key] === '' || isNaN(Number(ageDeductions[key]))) {
+                                      setAgeDeductions((prev) => ({ ...prev, [key]: 0 }));
+                                    }
+                                  }}
+                                  className="w-20 pl-2.5 pr-6 py-1.5 border border-slate-300 rounded-lg text-right text-sm font-mono font-bold bg-white focus:outline-none focus:ring-2 focus:ring-revoo-500"
+                                />
+                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                              </div>
+                              <span className={`text-xs font-mono font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                                {amount > 0 ? `−₹${formatINR(amount)}` : 'No change'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
