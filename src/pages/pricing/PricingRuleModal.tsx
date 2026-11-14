@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, History, Loader2, Save, Smartphone, X } from 'lucide-react';
@@ -281,7 +281,22 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
     queryFn: async () => (await apiClient.get(`/pricing/history/${modelId}`)).data.data,
   });
 
-  const [basePrice, setBasePrice] = useState<number | string>(model.basePrice || 0);
+  // Each variant's price from the catalogue (model base price + variant modifier), cheapest first
+  const variantPrices = useMemo(
+    () =>
+      (model.variants || [])
+        .map((v, i) => ({
+          id: String(v._id ?? `${v.capacity}-${i}`),
+          capacity: v.capacity,
+          price: (Number(model.basePrice) || 0) + (Number(v.priceModifier) || 0),
+        }))
+        .sort((a, b) => a.price - b.price),
+    [model.variants, model.basePrice]
+  );
+  const [variantId, setVariantId] = useState<string | null>(variantPrices[0]?.id ?? null);
+  const selectedVariant = variantPrices.find((v) => v.id === variantId) ?? null;
+
+  const [basePrice, setBasePrice] = useState<number | string>(variantPrices[0]?.price ?? (model.basePrice || 0));
   const [storageAdj, setStorageAdj] = useState<number | string>(0);
   const [pcts, setPcts] = useState<Record<string, Values>>(defaultPercentages);
   const [accessories, setAccessories] = useState<Values>({ hasOriginalCharger: 500, hasOriginalBox: 500 });
@@ -298,7 +313,9 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
     if (loadedVersion.current === versionKey) return;
     loadedVersion.current = versionKey;
     const bp = Number(rule.basePrice) || model.basePrice || 0;
-    setBasePrice(bp);
+    // The baseline shows the selected variant's catalogue price (cheapest first); models without
+    // variants keep the saved baseline
+    setBasePrice(selectedVariant ? selectedVariant.price : bp);
     setStorageAdj(Number(rule.storagePriceAdjustment) || 0);
 
     const dp = rule.deductionPercentages || {};
@@ -422,10 +439,42 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                   {/* Prices */}
                   <Card title="Base price">
+                    {variantPrices.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-xs font-semibold text-slate-700">Variant</p>
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Variant">
+                          {variantPrices.map((v) => {
+                            const selected = v.id === variantId;
+                            return (
+                              <button
+                                key={v.id}
+                                type="button"
+                                aria-pressed={selected}
+                                onClick={() => {
+                                  setVariantId(v.id);
+                                  setBasePrice(v.price);
+                                }}
+                                className={`cursor-pointer rounded-xl border px-3 py-1.5 text-left transition ${
+                                  selected
+                                    ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-400 dark:bg-amber-400/10'
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                              >
+                                <span className="block text-xs font-semibold text-slate-800">{v.capacity}</span>
+                                <span className="block font-mono text-[11px] text-slate-500">{inr(v.price)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-1.5 text-[11px] text-slate-400">
+                          Prices from the catalogue. Pick a variant: the baseline and every ₹ amount below follow its price.
+                        </p>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div>
                         <label htmlFor="pr-base" className="mb-1 block text-xs font-semibold text-slate-700">
-                          Baseline buyback price (₹)
+                          Baseline buyback price (₹){selectedVariant ? ` · ${selectedVariant.capacity}` : ''}
                         </label>
                         <input
                           id="pr-base"
