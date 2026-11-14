@@ -88,6 +88,18 @@ export const RequestDetailPage: React.FC = () => {
       setFinalOfferAmount(request.indicativeEstimate?.estimatedAmount || 0);
       setPaymentAmount(request.activeOfferId?.finalOfferedAmount || request.indicativeEstimate?.estimatedAmount || 0);
       setReturnTracking(`RET-${request.requestNumber ? request.requestNumber.replace(/^REV-/i, 'GENIE-') : ''}`);
+      if (request.scheduledPickupDate) {
+        setCollectionDate(request.scheduledPickupDate);
+      }
+      if (request.preferredTimeWindow) {
+        setCollectionSlot(request.preferredTimeWindow);
+      }
+      if (request.assignedCollector?.staffName) {
+        setCollectionStaff(request.assignedCollector.staffName);
+      }
+      if (request.assignedCollector?.timeSlot) {
+        setCollectionSlot(request.assignedCollector.timeSlot);
+      }
     }
   }, [request]);
 
@@ -105,10 +117,6 @@ export const RequestDetailPage: React.FC = () => {
     },
   });
 
-  if (isLoading || !request) {
-    return <div className="p-12 text-center text-slate-500">Loading request dossier...</div>;
-  }
-
   const requestPincode = request?.pickupAddress?.pincode || '';
   const requestDistrict = request?.pickupAddress?.city || request?.pickupAddress?.state || '';
 
@@ -121,10 +129,14 @@ export const RequestDetailPage: React.FC = () => {
           district: requestDistrict,
         },
       });
-      return res.data.data;
+      return res.data?.data || [];
     },
-    enabled: activeModal === 'ASSIGN_COLLECTION' || !!request,
+    enabled: !!(requestPincode || requestDistrict),
   });
+
+  if (isLoading || !request) {
+    return <div className="p-12 text-center text-slate-500">Loading request dossier...</div>;
+  }
 
   const handleAssignCollection = () => {
     mutation.mutate({
@@ -156,9 +168,9 @@ export const RequestDetailPage: React.FC = () => {
           displayCondition: inspDisplay,
           bodyCondition: inspBody,
           batteryHealth: inspBattery,
-          functionalFaults: request.declaredCondition.functionalFaults,
-          hasOriginalBox: request.declaredCondition.hasOriginalBox,
-          hasOriginalCharger: request.declaredCondition.hasOriginalCharger,
+          functionalFaults: request.declaredCondition?.functionalFaults || {},
+          hasOriginalBox: request.declaredCondition?.hasOriginalBox ?? false,
+          hasOriginalCharger: request.declaredCondition?.hasOriginalCharger ?? false,
           screenFunctional,
           touchFunctional,
           camerasFunctional,
@@ -265,37 +277,69 @@ export const RequestDetailPage: React.FC = () => {
             {/* Condition Overview Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-100 text-xs">
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Display</span>
-                <span className="font-semibold text-slate-800">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Display & Touch</span>
+                <span className="font-semibold text-slate-800 block capitalize">
                   {(
                     request.declaredCondition?.displayCondition ||
                     request.declaredCondition?.screenDisplayCondition ||
                     'Good / Working'
-                  ).replace(/_/g, ' ')}
+                  )
+                    .replace(/_/g, ' ')
+                    .toLowerCase()}
                 </span>
+                {request.declaredCondition?.touchGlassCondition && (
+                  <span className="text-[10px] text-slate-500 block mt-0.5 capitalize">
+                    {request.declaredCondition.touchGlassCondition.replace(/_/g, ' ').toLowerCase()}
+                  </span>
+                )}
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Body / Frame</span>
-                <span className="font-semibold text-slate-800">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Body & Frame</span>
+                <span className="font-semibold text-slate-800 block capitalize">
                   {(
                     request.declaredCondition?.bodyCondition ||
                     request.declaredCondition?.backPanelCondition ||
                     'Flawless / Normal'
-                  ).replace(/_/g, ' ')}
+                  )
+                    .replace(/_/g, ' ')
+                    .toLowerCase()}
                 </span>
+                {request.declaredCondition?.sidePanelCondition && (
+                  <span className="text-[10px] text-slate-500 block mt-0.5 capitalize">
+                    Sides: {request.declaredCondition.sidePanelCondition.replace(/_/g, ' ').toLowerCase()}
+                  </span>
+                )}
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                 <span className="text-slate-500 block text-[10px] uppercase font-bold">Battery</span>
-                <span className="font-semibold text-slate-800">
-                  {request.declaredCondition?.batteryHealth || 'Healthy (85%+)'}
+                <span className="font-semibold text-slate-800 block">
+                  {request.declaredCondition?.batteryHealth ||
+                    (request.declaredCondition?.hardwareFaults?.batteryHealthBelow83
+                      ? 'Below 83%'
+                      : 'Healthy (85%+)')}
+                </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">
+                  {request.declaredCondition?.hardwareFaults?.batteryHealthBelow83
+                    ? 'Battery health ≤ 83%'
+                    : 'Good charge retention'}
                 </span>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Original Kit</span>
-                <span className="font-semibold text-slate-800">
-                  {request.declaredCondition?.hasOriginalBox ? 'Box ✓ ' : 'No Box '}
-                  {request.declaredCondition?.hasOriginalCharger ? '| Charger ✓' : ''}
-                </span>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Kit & Accessories</span>
+                <div className="font-semibold text-slate-800 flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <span className={request.declaredCondition?.hasOriginalBox ? 'text-emerald-700' : 'text-slate-500'}>
+                    {request.declaredCondition?.hasOriginalBox ? 'Box ✓' : 'No Box ✗'}
+                  </span>
+                  <span>•</span>
+                  <span className={request.declaredCondition?.hasOriginalCharger ? 'text-emerald-700' : 'text-slate-500'}>
+                    {request.declaredCondition?.hasOriginalCharger ? 'Charger ✓' : 'No Charger ✗'}
+                  </span>
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                  <span>Bill: {request.declaredCondition?.hasValidBill === false ? 'No Bill ✗' : 'Valid Bill ✓'}</span>
+                  <span>•</span>
+                  <span>{request.declaredCondition?.basicQuestions?.hasValidWarranty ? 'In Warranty' : 'Out of Warranty'}</span>
+                </div>
               </div>
             </div>
 
@@ -456,11 +500,18 @@ export const RequestDetailPage: React.FC = () => {
               <User className="w-4 h-4 text-slate-500" /> Customer Information
             </h3>
             <div className="space-y-1 text-slate-700">
-              <p className="font-semibold text-slate-900">{request.customerDetails?.fullName || 'Customer'}</p>
-              <p className="flex items-center gap-1 text-slate-600">
-                <Phone className="w-3.5 h-3.5 text-slate-400" /> {request.customerDetails?.phone || 'N/A'}
+              <p className="font-semibold text-slate-900">
+                {request.customerDetails?.fullName || (request.userId as any)?.fullName || 'Customer'}
               </p>
-              {request.customerDetails?.email && <p className="text-slate-500">{request.customerDetails.email}</p>}
+              <p className="flex items-center gap-1 text-slate-600">
+                <Phone className="w-3.5 h-3.5 text-slate-400" />{' '}
+                {request.customerDetails?.phone || (request.userId as any)?.phone || 'N/A'}
+              </p>
+              {(request.customerDetails?.email || (request.userId as any)?.email) && (
+                <p className="text-slate-500">
+                  {request.customerDetails?.email || (request.userId as any)?.email}
+                </p>
+              )}
             </div>
 
             <div className="pt-3 border-t border-slate-100">
@@ -468,13 +519,73 @@ export const RequestDetailPage: React.FC = () => {
                 <MapPin className="w-3 h-3 text-slate-400" /> Pickup Address
               </span>
               <p className="text-slate-800 leading-relaxed font-medium">
-                {request.pickupAddress?.street || 'Doorstep Address'}, {request.pickupAddress?.city || ''},{' '}
-                {request.pickupAddress?.state || ''} - {request.pickupAddress?.pincode || ''}
+                {request.pickupAddress?.street ? `${request.pickupAddress.street}, ` : ''}
+                {request.pickupAddress?.area ? `${request.pickupAddress.area}, ` : ''}
+                {request.pickupAddress?.city || ''}, {request.pickupAddress?.state || ''} -{' '}
+                {request.pickupAddress?.pincode || ''}
               </p>
               {request.pickupAddress?.landmark && (
                 <p className="text-slate-500 mt-0.5">Landmark: {request.pickupAddress.landmark}</p>
               )}
             </div>
+
+            {/* Scheduled Pickup Schedule */}
+            {(request.scheduledPickupDate || request.preferredTimeWindow) && (
+              <div className="pt-3 border-t border-slate-100">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-slate-400" /> Customer Pickup Schedule
+                </span>
+                <div className="space-y-1">
+                  {request.scheduledPickupDate && (
+                    <p className="text-slate-800 font-semibold">
+                      {new Date(request.scheduledPickupDate).toLocaleDateString('en-IN', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  )}
+                  {request.preferredTimeWindow && (
+                    <span className="inline-block px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-medium">
+                      {request.preferredTimeWindow}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payout Details */}
+            {request.payoutDetails && (
+              <div className="pt-3 border-t border-slate-100">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1 flex items-center gap-1">
+                  <CreditCard className="w-3 h-3 text-slate-400" /> Payout Mode Requested
+                </span>
+                <p className="text-slate-800 font-semibold">
+                  {request.payoutDetails.method === 'INSTANT_CASH'
+                    ? '💵 Instant Cash at Handover'
+                    : request.payoutDetails.method === 'UPI'
+                    ? `📱 UPI: ${request.payoutDetails.upiId || 'Provided at doorstep'}`
+                    : `🏦 Bank: ${request.payoutDetails.bankName || ''} A/C ${request.payoutDetails.accountNumber || ''}`}
+                </p>
+              </div>
+            )}
+
+            {/* Assigned Executive */}
+            {request.assignedCollector?.staffName && (
+              <div className="pt-3 border-t border-slate-200 bg-amber-50/50 -mx-5 -mb-5 p-4 rounded-b-xl border-t">
+                <span className="text-[10px] font-bold uppercase text-amber-800 block mb-1 flex items-center gap-1">
+                  <Truck className="w-3 h-3 text-amber-700" /> Assigned Executive
+                </span>
+                <p className="font-bold text-slate-900">{request.assignedCollector.staffName}</p>
+                {request.assignedCollector.scheduledDate && (
+                  <p className="text-slate-600 text-[11px] mt-0.5">
+                    {new Date(request.assignedCollector.scheduledDate).toLocaleDateString('en-IN')}{' '}
+                    {request.assignedCollector.timeSlot ? `• ${request.assignedCollector.timeSlot}` : ''}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Operational Action Panel */}

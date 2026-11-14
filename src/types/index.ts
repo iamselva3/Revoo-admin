@@ -219,6 +219,7 @@ export interface BuybackRequest {
     backPanelCondition?: string;
     sidePanelCondition?: string;
     batteryHealth?: string;
+    hasValidBill?: boolean;
     summary?: Array<{ title: string; items: string[] }>;
     basicQuestions?: any;
     hardwareFaults?: any;
@@ -250,11 +251,21 @@ export interface BuybackRequest {
   photoUrls: string[];
   pickupAddress: {
     street: string;
+    area?: string;
     city: string;
     state: string;
     pincode: string;
     landmark?: string;
     preferredSlot?: string;
+  };
+  scheduledPickupDate?: string;
+  preferredTimeWindow?: string;
+  payoutDetails?: {
+    method: 'UPI' | 'BANK_TRANSFER' | 'INSTANT_CASH';
+    upiId?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    bankName?: string;
   };
   status: RequestStatus;
   timeline: Array<{
