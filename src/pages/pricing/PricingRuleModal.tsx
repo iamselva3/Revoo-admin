@@ -134,31 +134,105 @@ const cleanNumberInput = (rawVal: string, max?: number): string | number => {
 
 const inr = (n: number) => `₹${(Number(n) || 0).toLocaleString('en-IN')}`;
 
-const PctInput: React.FC<{
+const DualDeductionInput: React.FC<{
   label: string;
-  value: number | string;
-  max?: number;
+  pct: number | string;
+  basePrice: number;
+  maxPct?: number;
   onChange: (v: number | string) => void;
-}> = ({ label, value, max = 100, onChange }) => (
-  <div className="relative shrink-0">
-    <input
-      type="number"
-      required
-      min={0}
-      max={max}
-      step="any"
-      aria-label={`${label} (%)`}
-      value={value}
-      onFocus={(e) => e.target.select()}
-      onChange={(e) => onChange(cleanNumberInput(e.target.value, max))}
-      onBlur={() => {
-        if (value === '' || isNaN(Number(value))) onChange(0);
-      }}
-      className="w-[72px] py-1.5 pl-2 pr-6 border border-slate-300 rounded-lg text-right font-mono font-bold text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-    />
-    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">%</span>
-  </div>
-);
+}> = ({ label, pct, basePrice, maxPct = 100, onChange }) => {
+  const bp = Number(basePrice) || 0;
+  const currentAmt = bp > 0 ? Math.round((bp * (Number(pct) || 0)) / 100) : 0;
+
+  const [isPriceFocused, setIsPriceFocused] = useState(false);
+  const [priceDraft, setPriceDraft] = useState('');
+
+  const handlePriceFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsPriceFocused(true);
+    setPriceDraft(currentAmt > 0 ? String(currentAmt) : '');
+    e.target.select();
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/[^\d]/g, '');
+    const cleaned = raw.replace(/^0+(?=\d)/, '');
+    setPriceDraft(cleaned);
+
+    if (cleaned === '' || bp === 0) {
+      onChange(0);
+      return;
+    }
+
+    const numAmt = Number(cleaned);
+    let calculatedPct = (numAmt / bp) * 100;
+    // Round to 1 decimal place (e.g. 15.5 or 15)
+    calculatedPct = Math.round(calculatedPct * 10) / 10;
+    if (maxPct !== undefined) {
+      calculatedPct = Math.min(maxPct, Math.max(0, calculatedPct));
+    }
+    onChange(calculatedPct);
+  };
+
+  const handlePriceBlur = () => {
+    setIsPriceFocused(false);
+    if (priceDraft === '' || isNaN(Number(priceDraft)) || bp === 0) {
+      onChange(0);
+    }
+  };
+
+  const displayPrice = isPriceFocused
+    ? priceDraft
+    : currentAmt > 0
+    ? currentAmt.toLocaleString('en-IN')
+    : '0';
+
+  return (
+    <div className="flex items-center gap-1.5 shrink-0">
+      {/* % Input */}
+      <div className="relative shrink-0">
+        <input
+          type="number"
+          required
+          min={0}
+          max={maxPct}
+          step="any"
+          aria-label={`${label} (%)`}
+          title={`${label} percentage`}
+          value={pct}
+          onFocus={(e) => e.target.select()}
+          onChange={(e) => onChange(cleanNumberInput(e.target.value, maxPct))}
+          onBlur={() => {
+            if (pct === '' || isNaN(Number(pct))) onChange(0);
+          }}
+          className="w-[62px] py-1.5 pl-2 pr-5 border border-slate-300 rounded-lg text-right font-mono font-bold text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
+          %
+        </span>
+      </div>
+
+      {/* ₹ Price Input */}
+      <div className="relative shrink-0">
+        <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-red-600">
+          −₹
+        </span>
+        <input
+          type="text"
+          inputMode="numeric"
+          aria-label={`${label} (amount)`}
+          title={`${label} deduction amount (₹)`}
+          value={displayPrice}
+          onFocus={handlePriceFocus}
+          onChange={handlePriceChange}
+          onBlur={handlePriceBlur}
+          className={`w-[88px] py-1.5 pl-7 pr-2 border border-slate-300 rounded-lg text-right font-mono font-bold text-xs bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+            currentAmt > 0 ? 'text-red-700' : 'text-slate-400'
+          }`}
+        />
+      </div>
+    </div>
+  );
+};
 
 const Card: React.FC<{ title: string; badge?: React.ReactNode; hint?: React.ReactNode; children: React.ReactNode }> = ({
   title,
@@ -423,26 +497,22 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                   badge={<Badge tone="red">Required when under warranty</Badge>}
                   hint="When a customer says the phone has a valid warranty, they must pick how old it is (from the bill date). This % of the phone's price is taken off. 0% means nothing is taken off."
                 >
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-                    {DEVICE_AGE_BANDS.map(({ key, label }) => {
-                      const amount = rupees(age[key] ?? 0);
-                      return (
-                        <div key={key} className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                          <span className="text-xs font-medium text-slate-700">{label}</span>
-                          <span className="flex items-center gap-2">
-                            <PctInput
-                              label={label}
-                              value={age[key] ?? 0}
-                              max={DEVICE_AGE_MAX_PCT}
-                              onChange={(v) => setAge((p) => ({ ...p, [key]: v }))}
-                            />
-                            <span className={`w-16 text-right font-mono text-[11px] font-semibold ${amount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
-                              {amount > 0 ? `−${inr(amount)}` : '—'}
-                            </span>
-                          </span>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+                    {DEVICE_AGE_BANDS.map(({ key, label }) => (
+                      <div
+                        key={key}
+                        className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="text-xs font-medium text-slate-700">{label}</span>
+                        <DualDeductionInput
+                          label={label}
+                          pct={age[key] ?? 0}
+                          basePrice={bp}
+                          maxPct={DEVICE_AGE_MAX_PCT}
+                          onChange={(v) => setAge((p) => ({ ...p, [key]: v }))}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </Card>
 
@@ -461,12 +531,13 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                                 {item.fixedZero ? (
                                   <span className="text-[11px] font-semibold text-slate-400">No deduction</span>
                                 ) : (
-                                  <span className="flex items-center gap-2">
-                                    <PctInput label={item.label} value={value} onChange={(v) => setPct(section.key, item.key, v)} />
-                                    <span className="w-20 text-right font-mono text-[11px] font-semibold text-slate-500">
-                                      {inr(rupees(value))}
-                                    </span>
-                                  </span>
+                                  <DualDeductionInput
+                                    label={item.label}
+                                    pct={value}
+                                    basePrice={bp}
+                                    maxPct={100}
+                                    onChange={(v) => setPct(section.key, item.key, v)}
+                                  />
                                 )}
                               </div>
                             );
