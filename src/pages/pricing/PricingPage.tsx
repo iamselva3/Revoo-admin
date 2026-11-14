@@ -178,21 +178,18 @@ export const PricingPage: React.FC = () => {
                     &lt;3 · 3–6 · 6–11 · 11+ months
                   </span>
                 </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="sr-only">Open</span>
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-neutral-800">
               {isLoading ? (
                 [...Array(8)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-5 py-5 bg-slate-50/50" />
+                    <td colSpan={5} className="px-5 py-5 bg-slate-50/50" />
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-14 text-center text-slate-400">
+                  <td colSpan={5} className="px-5 py-14 text-center text-slate-400">
                     <p className="font-semibold">No models found.</p>
                     <p className="text-[11px] mt-0.5">Try another type, brand or search.</p>
                   </td>
@@ -226,7 +223,19 @@ export const PricingPage: React.FC = () => {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <span className="block truncate font-bold text-slate-900">{m.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="truncate font-bold text-slate-900">{m.name}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditing(m);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700 whitespace-nowrap shadow-2xs hover:bg-slate-50 hover:border-slate-300 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-700 transition shrink-0 cursor-pointer"
+                              >
+                                Edit pricing <ChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                             <span className="block text-[11px] text-slate-500">{brandOf(m)?.name || '—'}</span>
                           </div>
                         </div>
@@ -263,11 +272,6 @@ export const PricingPage: React.FC = () => {
                             Not set
                           </span>
                         )}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 whitespace-nowrap">
-                          Edit pricing <ChevronRight className="w-3.5 h-3.5" />
-                        </span>
                       </td>
                     </tr>
                   );
