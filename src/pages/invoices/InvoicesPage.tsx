@@ -318,7 +318,7 @@ export const InvoicesPage: React.FC = () => {
                     Plot 18B, Electronics City Phase 1,<br />
                     Hosur Road, Bengaluru, Karnataka - 560100<br />
                     State Code: 29 (Karnataka)<br />
-                    Helpline: 1800-419-GENIE (9 AM - 9 PM)
+                    Helpline: +91 93638 59553 (9 AM - 9 PM) | Email: genietnsupport@gmail.com
                   </div>
                 </div>
 
