@@ -15,57 +15,102 @@ interface PctItem {
   def: number;
   /** Always 0 (e.g. "No defects") */
   fixedZero?: boolean;
+  /** Small text under the label */
+  hint?: string;
 }
 
 interface PctSection {
   key: string;
   title: string;
+  /** Small text under the section title */
+  hint?: string;
   items: PctItem[];
 }
 
-/** Condition deductions shown in the window (% of the base price). */
+/**
+ * Every answer a customer can pick on the website and app, worded the same way, with the % of the
+ * price it takes off. Defaults are the price engine's (backend pricingEngine.js PRICING_OPTIONS); the
+ * server sends the saved value or that default for each one.
+ */
 const CONDITION_SECTIONS: PctSection[] = [
   {
     key: 'basicQuestions',
-    title: 'Basic working condition',
+    title: 'Basic questions (customer answers No)',
     items: [
-      { key: 'phoneNotWorking', label: 'Phone not working / dead (powers off)', def: 60 },
-      { key: 'touchscreenNotWorking', label: 'Touchscreen not working properly', def: 15 },
-      { key: 'displayNotOriginal', label: 'Display not original / replaced locally', def: 10 },
-      { key: 'noWarranty', label: 'No valid manufacturer warranty', def: 5 },
+      {
+        key: 'phoneNotWorking',
+        label: 'Phone not working (does not switch on)',
+        def: 97.8,
+        hint: 'Nothing else is asked. A working phone is never priced below this.',
+      },
+      { key: 'touchscreenNotWorking', label: 'Touchscreen not working', def: 62, hint: 'Also counts as no warranty.' },
+      { key: 'displayNotOriginal', label: 'Display not original (replaced locally)', def: 10, hint: 'Also counts as no warranty.' },
+      {
+        key: 'noWarranty',
+        label: 'No valid warranty',
+        def: 18,
+        hint: 'Taken off once: no warranty, no bill with the same IMEI, or damage that voids it (cracked glass or back, bent frame, broken camera glass, major spots).',
+      },
+    ],
+  },
+  {
+    key: 'screenDisplay',
+    title: 'Screen condition',
+    items: [
+      { key: 'NO_SPOT', label: 'No spot', def: 0, fixedZero: true },
+      { key: 'MINOR_SPOTS', label: '1–2 minor spots', def: 12 },
+      { key: 'MAJOR_SPOTS_OR_LINES', label: 'Major spots or lines', def: 28 },
+    ],
+  },
+  {
+    key: 'touchGlass',
+    title: 'Touch glass condition',
+    items: [
+      { key: 'NO_SCRATCH', label: 'No scratch or crack', def: 0, fixedZero: true },
+      { key: 'MINOR_SCRATCHES', label: 'Minor scratches', def: 6 },
+      { key: 'HEAVY_SCRATCHES', label: 'Heavy scratches', def: 12 },
+      { key: 'CRACKED_GLASS', label: 'Cracked or broken glass', def: 35 },
     ],
   },
   {
     key: 'backPanel',
-    title: 'Back panel',
+    title: 'Back panel condition',
     items: [
-      { key: 'NO_DEFECTS', label: 'No defects', def: 0, fixedZero: true },
-      { key: 'MINOR_SCRATCHES', label: 'Minor scratches (fewer than 2)', def: 3 },
-      { key: 'HEAVY_SCRATCHES', label: 'Heavy scratches', def: 8 },
-      { key: 'BACK_PANEL_BROKEN', label: 'Back panel broken / cracked glass', def: 15 },
+      { key: 'NO_DEFECTS', label: 'No defects on back panel', def: 0, fixedZero: true },
+      { key: 'MINOR_SCRATCHES', label: 'Minor scratches', def: 4 },
+      { key: 'HEAVY_SCRATCHES', label: 'Heavy scratches', def: 9 },
+      { key: 'BACK_PANEL_BROKEN', label: 'Back panel broken', def: 15 },
     ],
   },
   {
     key: 'sidePanel',
-    title: 'Center / side frame',
+    title: 'Center / side panel condition',
     items: [
-      { key: 'NO_DEFECTS', label: 'No defects', def: 0, fixedZero: true },
-      { key: 'MINOR_DENT_OR_SCRATCHES', label: 'Minor dent or scratches', def: 3 },
-      { key: 'HEAVY_DENT', label: 'Heavy dent on frame', def: 8 },
-      { key: 'BENT_OR_BROKEN', label: 'Side panel bent or broken', def: 12 },
+      { key: 'NO_DEFECTS', label: 'No defects on center panel', def: 0, fixedZero: true },
+      { key: 'MINOR_DENT_OR_SCRATCHES', label: 'Minor dent or scratches', def: 5 },
+      { key: 'HEAVY_DENT', label: 'Heavy dents or scratches', def: 9 },
+      { key: 'BENT_OR_BROKEN', label: 'Bent or broken frame', def: 16 },
     ],
   },
   {
     key: 'hardwareFaults',
-    title: 'Hardware & sensor faults',
+    title: 'Functional issues',
+    hint: 'The customer can tick several; each one ticked is taken off.',
     items: [
-      { key: 'powerButtonNotWorking', label: 'Power button not working', def: 5 },
-      { key: 'volumeButtonNotWorking', label: 'Volume button not working', def: 3 },
-      { key: 'chargingPortNotWorking', label: 'Charging port not working', def: 8 },
-      { key: 'earSpeakerNotWorking', label: 'Ear speaker not working or low', def: 3 },
+      { key: 'batteryHealthBelow83', label: 'Battery health 83% or below / battery problem', def: 8 },
+      { key: 'frontCameraNotWorking', label: 'Front camera not working', def: 10 },
+      { key: 'backCameraNotWorking', label: 'Back camera not working', def: 18 },
+      { key: 'cameraGlassBroken', label: 'Camera glass broken', def: 9 },
+      { key: 'networkProblem', label: 'Network / SIM issue', def: 97.8 },
+      { key: 'chargingPortNotWorking', label: 'Charging port not working', def: 7 },
+      { key: 'wifiOrBluetoothNotWorking', label: 'Wi-Fi or Bluetooth not working', def: 20 },
+      { key: 'earSpeakerNotWorking', label: 'Speaker not working', def: 8 },
+      { key: 'microphoneNotWorking', label: 'Microphone not working', def: 8 },
+      { key: 'biometricsNotWorking', label: 'Face ID / Fingerprint not working', def: 25 },
+      { key: 'powerButtonNotWorking', label: 'Power button not working', def: 6 },
+      { key: 'volumeButtonNotWorking', label: 'Volume button not working', def: 6 },
+      { key: 'vibratorNotWorking', label: 'Vibration not working', def: 2 },
       { key: 'proximitySensorNotWorking', label: 'Proximity sensor not working', def: 3 },
-      { key: 'wifiOrBluetoothNotWorking', label: 'Wi-Fi or Bluetooth not working', def: 5 },
-      { key: 'vibratorNotWorking', label: 'Vibrator not working', def: 2 },
     ],
   },
 ];
@@ -204,7 +249,7 @@ const DualDeductionInput: React.FC<{
           onBlur={() => {
             if (pct === '' || isNaN(Number(pct))) onChange(0);
           }}
-          className="w-[62px] py-1.5 pl-2 pr-5 border border-slate-300 rounded-lg text-right font-mono font-bold text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-[72px] py-1.5 pl-2 pr-5 border border-slate-300 rounded-lg text-right font-mono font-bold text-xs bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
         />
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">
           %
@@ -509,7 +554,7 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                   <Card
                     title="Missing original accessories"
                     badge={<Badge tone="red">Taken off if missing</Badge>}
-                    hint="The price already includes the original charger and box. If the customer doesn't have one, this amount is taken off (never more than 5% of the phone's price)."
+                    hint="The price already includes the original charger and box. If the customer doesn't have one, this amount is taken off (never more than 5% of the phone's price). Not asked when the phone doesn't switch on."
                   >
                     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                       {[
@@ -537,6 +582,12 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                         </label>
                       ))}
                     </div>
+                    <p className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-xs text-slate-600">
+                      <span>No bill with same IMEI (asked only when under warranty)</span>
+                      <span className="shrink-0 font-semibold text-slate-500">
+                        No valid warranty: {Number(pcts.basicQuestions?.noWarranty) || 0}%
+                      </span>
+                    </p>
                   </Card>
                 </div>
 
@@ -566,17 +617,31 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
                 </Card>
 
                 {/* Condition deductions */}
-                <Card title="Condition deductions" badge={<Badge tone="amber">% of base price</Badge>}>
-                  <div className="grid grid-cols-1 gap-x-8 gap-y-5 lg:grid-cols-2">
+                <Card
+                  title="Condition deductions"
+                  badge={<Badge tone="amber">% of base price</Badge>}
+                  hint="Every answer the customer can pick on the website and app. All the answers they pick add up, and the price never goes below what a phone that doesn't switch on gets."
+                >
+                  <div className="gap-x-8 lg:columns-2">
                     {CONDITION_SECTIONS.map((section) => (
-                      <div key={section.key}>
+                      <div key={section.key} className="mb-5 break-inside-avoid">
                         <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{section.title}</p>
+                        {section.hint && <p className="-mt-1 mb-1.5 text-[11px] text-slate-400">{section.hint}</p>}
                         <div className="divide-y divide-slate-100 dark:divide-neutral-800 rounded-xl border border-slate-200">
                           {section.items.map((item) => {
                             const value = pcts[section.key]?.[item.key] ?? 0;
                             return (
-                              <div key={item.key} className="flex items-center justify-between gap-3 px-3 py-2">
-                                <span className="text-xs text-slate-700">{item.label}</span>
+                              <div key={item.key} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                                <span className="min-w-0">
+                                  <span className="block text-xs text-slate-700">{item.label}</span>
+                                  {item.key === 'phoneNotWorking' && section.key === 'basicQuestions' ? (
+                                    <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">
+                                      Customer gets {inr(Math.max(0, bp - rupees(value)))}. {item.hint}
+                                    </span>
+                                  ) : (
+                                    item.hint && <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">{item.hint}</span>
+                                  )}
+                                </span>
                                 {item.fixedZero ? (
                                   <span className="text-[11px] font-semibold text-slate-400">No deduction</span>
                                 ) : (
