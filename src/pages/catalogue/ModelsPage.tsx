@@ -24,7 +24,8 @@ import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
 import { uploadImageFile } from '../../utils/uploadImage';
 import { SmartphoneModel, Brand } from '../../types';
-import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, ageFormValues, agePayload, zeroAgePercentages } from '../../utils/deviceAge';
+import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, ageFormValues, agePayload, standardAgePercentages } from '../../utils/deviceAge';
+import { DEVICE_CATEGORIES, DeviceCategory, categoryOf } from '../../utils/deviceCategory';
 import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 
 /** Brand logo for dropdown options; shows the brand's first letter if the logo can't load. */
@@ -126,7 +127,8 @@ const RupeeInput: React.FC<{
 export const ModelsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'phone' | 'laptop' | 'tablet' | 'tv'>('all');
+  // Phones, laptops, tablets and TVs are never listed together
+  const [selectedCategory, setSelectedCategory] = useState<DeviceCategory>('phone');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingModel, setEditingModel] = useState<SmartphoneModel | null>(null);
@@ -141,8 +143,9 @@ export const ModelsPage: React.FC = () => {
   const [basePrice, setBasePrice] = useState<number>(40000);
   const [releaseYear, setReleaseYear] = useState<number>(2024);
   const [imageUrl, setImageUrl] = useState('');
+  const [category, setCategory] = useState<DeviceCategory>('phone');
   // "How old is your phone?" — % of the price taken off per age (shared with the Pricing page)
-  const [ageDeductions, setAgeDeductions] = useState<Record<string, number | string>>(zeroAgePercentages);
+  const [ageDeductions, setAgeDeductions] = useState<Record<string, number | string>>(standardAgePercentages);
 
   // Multi-variant checkbox matrix state
   const [variantsList, setVariantsList] = useState<VariantItemState[]>([]);
@@ -231,7 +234,8 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(40000);
     setReleaseYear(2024);
     setImageUrl('');
-    setAgeDeductions(zeroAgePercentages());
+    setCategory(selectedCategory);
+    setAgeDeductions(standardAgePercentages());
     setVariantsList(
       STANDARD_VARIANTS.map((v) => ({
         id: `${v.ram}-${v.storage}`,
@@ -259,6 +263,7 @@ export const ModelsPage: React.FC = () => {
     setBasePrice(m.basePrice);
     setReleaseYear(m.releaseYear);
     setImageUrl(m.imageUrl || '');
+    setCategory(categoryOf(m));
     setAgeDeductions(ageFormValues(m.deviceAgeDeductions));
 
     // Pre-populate variants
@@ -366,6 +371,7 @@ export const ModelsPage: React.FC = () => {
       basePrice: Number(basePrice),
       releaseYear: Number(releaseYear),
       imageUrl,
+      category,
       deviceAgeDeductions: agePayload(ageDeductions),
       isPublished: true,
       variants: selectedVariants,
@@ -395,36 +401,9 @@ export const ModelsPage: React.FC = () => {
     });
   };
 
-  const detectCategory = (model: SmartphoneModel): 'phone' | 'laptop' | 'tablet' | 'tv' => {
-    const modelName = (model.name || '').toLowerCase();
-    if (modelName.includes('tv') || modelName.includes('bravia') || modelName.includes('oled') || modelName.includes('qled') || modelName.includes('crystal') || modelName.includes('uhd')) return 'tv';
-    if (modelName.includes('ipad') || modelName.includes('tab') || modelName.includes('pad')) return 'tablet';
-    if (
-      modelName.includes('macbook') ||
-      modelName.includes('laptop') ||
-      modelName.includes('xps') ||
-      modelName.includes('alienware') ||
-      modelName.includes('thinkpad') ||
-      modelName.includes('zenbook') ||
-      modelName.includes('vivobook') ||
-      modelName.includes('omen') ||
-      modelName.includes('predator') ||
-      modelName.includes('inspiron') ||
-      modelName.includes('swift') ||
-      modelName.includes('yoga') ||
-      modelName.includes('legion') ||
-      modelName.includes('spectre') ||
-      modelName.includes('envy') ||
-      modelName.includes('macbook air') ||
-      modelName.includes('macbook pro')
-    )
-      return 'laptop';
-    return 'phone';
-  };
 
   const filteredModels = (models || []).filter((m) => {
-    const cat = detectCategory(m);
-    const matchesCat = selectedCategory === 'all' || cat === selectedCategory;
+    const matchesCat = categoryOf(m) === selectedCategory;
     const matchesSearch = searchQuery.trim() === '' || m.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCat && matchesSearch;
   });
@@ -483,23 +462,15 @@ export const ModelsPage: React.FC = () => {
         {/* Category Filter Pills */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { id: 'all', label: 'All Devices', icon: Filter },
-              { id: 'phone', label: 'Mobile Phones', icon: Smartphone },
-              { id: 'laptop', label: 'Laptops', icon: Laptop },
-              { id: 'tablet', label: 'Tablets & iPads', icon: Tablet },
-              { id: 'tv', label: 'Smart TVs', icon: Tv },
-            ].map((tab) => {
+            {DEVICE_CATEGORIES.map((tab) => {
               const Icon = tab.icon;
               const isActive = selectedCategory === tab.id;
-              const count = tab.id === 'all'
-                ? models?.length || 0
-                : models?.filter((m) => detectCategory(m) === tab.id).length || 0;
+              const count = models?.filter((m) => categoryOf(m) === tab.id).length || 0;
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setSelectedCategory(tab.id as any)}
+                  onClick={() => setSelectedCategory(tab.id)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-xs'
@@ -507,7 +478,7 @@ export const ModelsPage: React.FC = () => {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
+                  <span>{tab.plural}</span>
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isActive ? 'bg-slate-700 text-slate-200' : 'bg-slate-200 text-slate-600'}`}>
                     {count}
                   </span>
@@ -583,7 +554,7 @@ export const ModelsPage: React.FC = () => {
               </tr>
             ) : (
               filteredModels.map((m) => {
-                const cat = detectCategory(m);
+                const cat = categoryOf(m);
                 const modelVariants = m.variants || [];
                 return (
                   <tr key={m._id} className="hover:bg-slate-50/80 transition-colors">
@@ -762,6 +733,30 @@ export const ModelsPage: React.FC = () => {
                       options={modalBrandOptions}
                       placeholder="Select Manufacturer Brand..."
                     />
+                  </div>
+
+                  {/* Device type: phones, laptops, tablets and TVs are listed separately */}
+                  <div>
+                    <p className="block text-sm font-semibold text-slate-700 mb-1.5">Device type</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" role="group" aria-label="Device type">
+                      {DEVICE_CATEGORIES.map((c) => {
+                        const Icon = c.icon;
+                        const active = category === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setCategory(c.id)}
+                            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition cursor-pointer ${
+                              active ? 'border-revoo-600 bg-revoo-50 text-revoo-800 ring-1 ring-revoo-600' : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                            }`}
+                          >
+                            <Icon className="h-3.5 w-3.5" /> {c.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   <div>

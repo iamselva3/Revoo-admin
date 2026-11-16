@@ -44,6 +44,8 @@ export interface SmartphoneModel {
   imageUrl?: string;
   basePrice: number;
   displayOrder?: number;
+  /** Phone, laptop, tablet or TV (see utils/deviceCategory); missing = phone */
+  category?: 'phone' | 'laptop' | 'tablet' | 'tv';
   /** % of the price taken off per phone-age band (see utils/deviceAge). */
   deviceAgeDeductions?: Partial<Record<'BELOW_3_MONTHS' | '3_TO_6_MONTHS' | '6_TO_11_MONTHS' | 'ABOVE_11_MONTHS', number>>;
   isPublished: boolean;

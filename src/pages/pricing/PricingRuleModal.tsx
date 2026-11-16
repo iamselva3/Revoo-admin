@@ -5,7 +5,7 @@ import { ChevronDown, History, Loader2, Save, Smartphone, X } from 'lucide-react
 import { apiClient } from '../../api/client';
 import { SmartphoneModel } from '../../types';
 import { resolveImageUrl } from '../../utils/assetUrl';
-import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, ageFormValues, agePayload } from '../../utils/deviceAge';
+import { DEVICE_AGE_BANDS, DEVICE_AGE_MAX_PCT, STANDARD_AGE_PERCENTAGES, ageFormValues, agePayload } from '../../utils/deviceAge';
 
 type Values = Record<string, number | string>;
 
@@ -40,15 +40,15 @@ const CONDITION_SECTIONS: PctSection[] = [
       {
         key: 'phoneNotWorking',
         label: 'Phone not working (does not switch on)',
-        def: 97.8,
+        def: 87.9,
         hint: 'Nothing else is asked. A working phone is never priced below this.',
       },
-      { key: 'touchscreenNotWorking', label: 'Touchscreen not working', def: 62, hint: 'Also counts as no warranty.' },
-      { key: 'displayNotOriginal', label: 'Display not original (replaced locally)', def: 10, hint: 'Also counts as no warranty.' },
+      { key: 'touchscreenNotWorking', label: 'Touchscreen not working', def: 60, hint: 'Also counts as no warranty.' },
+      { key: 'displayNotOriginal', label: 'Display not original (replaced locally)', def: 65, hint: 'Also counts as no warranty.' },
       {
         key: 'noWarranty',
         label: 'No valid warranty',
-        def: 18,
+        def: 0,
         hint: 'Taken off once: no warranty, no bill with the same IMEI, or damage that voids it (cracked glass or back, bent frame, broken camera glass, major spots).',
       },
     ],
@@ -77,8 +77,8 @@ const CONDITION_SECTIONS: PctSection[] = [
     title: 'Back panel condition',
     items: [
       { key: 'NO_DEFECTS', label: 'No defects on back panel', def: 0, fixedZero: true },
-      { key: 'MINOR_SCRATCHES', label: 'Minor scratches', def: 4 },
-      { key: 'HEAVY_SCRATCHES', label: 'Heavy scratches', def: 9 },
+      { key: 'MINOR_SCRATCHES', label: 'Minor scratches', def: 3 },
+      { key: 'HEAVY_SCRATCHES', label: 'Heavy scratches', def: 8 },
       { key: 'BACK_PANEL_BROKEN', label: 'Back panel broken', def: 15 },
     ],
   },
@@ -87,9 +87,9 @@ const CONDITION_SECTIONS: PctSection[] = [
     title: 'Center / side panel condition',
     items: [
       { key: 'NO_DEFECTS', label: 'No defects on center panel', def: 0, fixedZero: true },
-      { key: 'MINOR_DENT_OR_SCRATCHES', label: 'Minor dent or scratches', def: 5 },
-      { key: 'HEAVY_DENT', label: 'Heavy dents or scratches', def: 9 },
-      { key: 'BENT_OR_BROKEN', label: 'Bent or broken frame', def: 16 },
+      { key: 'MINOR_DENT_OR_SCRATCHES', label: 'Minor dent or scratches', def: 3 },
+      { key: 'HEAVY_DENT', label: 'Heavy dents or scratches', def: 8 },
+      { key: 'BENT_OR_BROKEN', label: 'Bent or broken frame', def: 12 },
     ],
   },
   {
@@ -97,20 +97,20 @@ const CONDITION_SECTIONS: PctSection[] = [
     title: 'Functional issues',
     hint: 'The customer can tick several; each one ticked is taken off.',
     items: [
-      { key: 'batteryHealthBelow83', label: 'Battery health 83% or below / battery problem', def: 8 },
+      { key: 'batteryHealthBelow83', label: 'Battery health 83% or below / battery problem', def: 15 },
       { key: 'frontCameraNotWorking', label: 'Front camera not working', def: 10 },
       { key: 'backCameraNotWorking', label: 'Back camera not working', def: 18 },
       { key: 'cameraGlassBroken', label: 'Camera glass broken', def: 9 },
-      { key: 'networkProblem', label: 'Network / SIM issue', def: 97.8 },
-      { key: 'chargingPortNotWorking', label: 'Charging port not working', def: 7 },
-      { key: 'wifiOrBluetoothNotWorking', label: 'Wi-Fi or Bluetooth not working', def: 20 },
-      { key: 'earSpeakerNotWorking', label: 'Speaker not working', def: 8 },
-      { key: 'microphoneNotWorking', label: 'Microphone not working', def: 8 },
+      { key: 'networkProblem', label: 'Network / SIM issue', def: 50 },
+      { key: 'chargingPortNotWorking', label: 'Charging port not working', def: 8 },
+      { key: 'wifiOrBluetoothNotWorking', label: 'Wi-Fi or Bluetooth not working', def: 8 },
+      { key: 'earSpeakerNotWorking', label: 'Speaker not working', def: 15 },
+      { key: 'microphoneNotWorking', label: 'Microphone not working', def: 15 },
       { key: 'biometricsNotWorking', label: 'Face ID / Fingerprint not working', def: 25 },
-      { key: 'powerButtonNotWorking', label: 'Power button not working', def: 6 },
-      { key: 'volumeButtonNotWorking', label: 'Volume button not working', def: 6 },
-      { key: 'vibratorNotWorking', label: 'Vibration not working', def: 2 },
-      { key: 'proximitySensorNotWorking', label: 'Proximity sensor not working', def: 3 },
+      { key: 'powerButtonNotWorking', label: 'Power button not working', def: 5 },
+      { key: 'volumeButtonNotWorking', label: 'Volume button not working', def: 5 },
+      { key: 'vibratorNotWorking', label: 'Vibration not working', def: 5 },
+      { key: 'proximitySensorNotWorking', label: 'Proximity sensor not working', def: 8 },
     ],
   },
 ];
@@ -345,7 +345,7 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
   const [storageAdj, setStorageAdj] = useState<number | string>(0);
   const [pcts, setPcts] = useState<Record<string, Values>>(defaultPercentages);
   const [accessories, setAccessories] = useState<Values>({ hasOriginalCharger: 500, hasOriginalBox: 500 });
-  const [age, setAge] = useState<Values>(() => ageFormValues(model.deviceAgeDeductions));
+  const [age, setAge] = useState<Values>(() => ageFormValues(model.deviceAgeDeductions ?? STANDARD_AGE_PERCENTAGES));
   const [reason, setReason] = useState('');
   const [showHistory, setShowHistory] = useState(false);
 
@@ -382,7 +382,7 @@ export const PricingRuleModal: React.FC<Props> = ({ model, brandName, onClose, o
       hasOriginalCharger: d.accessoriesBonus?.hasOriginalCharger ?? 500,
       hasOriginalBox: d.accessoriesBonus?.hasOriginalBox ?? 500,
     });
-    setAge(ageFormValues(dp.deviceAge ?? model.deviceAgeDeductions));
+    setAge(ageFormValues(dp.deviceAge ?? model.deviceAgeDeductions ?? STANDARD_AGE_PERCENTAGES));
   }, [rule, model.basePrice, model.deviceAgeDeductions]);
 
   // Esc closes the window

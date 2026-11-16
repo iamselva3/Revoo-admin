@@ -1,39 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, ChevronLeft, ChevronRight, Filter, Laptop, Search, Smartphone, Tablet, Tag, Tv } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Search, Smartphone, Tag } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { SmartphoneModel } from '../../types';
 import { resolveImageUrl } from '../../utils/assetUrl';
 import { DEVICE_AGE_BANDS } from '../../utils/deviceAge';
+import { CATEGORY_ICON, DEVICE_CATEGORIES, DeviceCategory, categoryOf } from '../../utils/deviceCategory';
 import { ModernSelect, SelectOption } from '../../components/common/ModernSelect';
 import { PricingRuleModal } from './PricingRuleModal';
 
-type Category = 'phone' | 'laptop' | 'tablet' | 'tv';
 
 const PAGE_SIZE = 20;
 
-const detectCategory = (model: SmartphoneModel): Category => {
-  const name = (model.name || '').toLowerCase();
-  if (name.includes('tv') || name.includes('bravia') || name.includes('oled tv') || name.includes('qled') || name.includes('crystal')) return 'tv';
-  if (name.includes('ipad') || name.includes('tab') || name.includes('pad')) return 'tablet';
-  if (
-    ['macbook', 'laptop', 'xps', 'alienware', 'thinkpad', 'zenbook', 'vivobook', 'omen', 'predator', 'inspiron', 'spectre'].some((k) =>
-      name.includes(k)
-    )
-  )
-    return 'laptop';
-  return 'phone';
-};
 
-const CATEGORY_TABS: Array<{ id: 'all' | Category; label: string; icon: React.ElementType }> = [
-  { id: 'all', label: 'All devices', icon: Filter },
-  { id: 'phone', label: 'Phones', icon: Smartphone },
-  { id: 'laptop', label: 'Laptops', icon: Laptop },
-  { id: 'tablet', label: 'Tablets', icon: Tablet },
-  { id: 'tv', label: 'Smart TVs', icon: Tv },
-];
 
-const CATEGORY_ICON: Record<Category, React.ElementType> = { phone: Smartphone, laptop: Laptop, tablet: Tablet, tv: Tv };
 
 const brandOf = (m: SmartphoneModel) => (typeof m.brandId === 'object' && m.brandId ? m.brandId : null);
 const inr = (n: number) => `₹${(Number(n) || 0).toLocaleString('en-IN')}`;
@@ -44,7 +24,8 @@ const upToPrice = (m: SmartphoneModel) => {
 
 /** Pricing Engine: every model in a table; click one to see and change how its price is worked out. */
 export const PricingPage: React.FC = () => {
-  const [category, setCategory] = useState<'all' | Category>('all');
+  // Phones, laptops, tablets and TVs are never listed together
+  const [category, setCategory] = useState<DeviceCategory>('phone');
   const [brandId, setBrandId] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -71,7 +52,7 @@ export const PricingPage: React.FC = () => {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (models || []).filter((m) => {
-      if (category !== 'all' && detectCategory(m) !== category) return false;
+      if (categoryOf(m) !== category) return false;
       if (brandId && brandOf(m)?._id !== brandId) return false;
       if (!q) return true;
       return `${brandOf(m)?.name || ''} ${m.name}`.toLowerCase().includes(q);
@@ -110,10 +91,10 @@ export const PricingPage: React.FC = () => {
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {CATEGORY_TABS.map((tab) => {
+            {DEVICE_CATEGORIES.map((tab) => {
               const Icon = tab.icon;
               const isActive = category === tab.id;
-              const count = tab.id === 'all' ? models?.length || 0 : models?.filter((m) => detectCategory(m) === tab.id).length || 0;
+              const count = models?.filter((m) => categoryOf(m) === tab.id).length || 0;
               return (
                 <button
                   key={tab.id}
@@ -125,7 +106,7 @@ export const PricingPage: React.FC = () => {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
+                  <span>{tab.plural}</span>
                   <span className={`text-[10px] px-1.5 rounded-full ${isActive ? 'bg-slate-700 text-slate-200 dark:bg-black/15 dark:text-black' : 'bg-slate-200 text-slate-600'}`}>
                     {count}
                   </span>
@@ -196,7 +177,7 @@ export const PricingPage: React.FC = () => {
                 </tr>
               ) : (
                 rows.map((m) => {
-                  const cat = detectCategory(m);
+                  const cat = categoryOf(m);
                   const Icon = CATEGORY_ICON[cat];
                   const age = m.deviceAgeDeductions || {};
                   const ageSet = DEVICE_AGE_BANDS.some(({ key }) => Number(age[key]) > 0);
