@@ -507,6 +507,15 @@ export const RequestDetailPage: React.FC = () => {
                 <Phone className="w-3.5 h-3.5 text-slate-400" />{' '}
                 {request.customerDetails?.phone || (request.userId as any)?.phone || 'N/A'}
               </p>
+              {request.customerDetails?.alternatePhone && (
+                <p className="flex items-center gap-1 text-slate-600">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />{' '}
+                  <span>
+                    {request.customerDetails.alternatePhone}{' '}
+                    <span className="text-[10px] font-semibold uppercase text-slate-400">Alternative</span>
+                  </span>
+                </p>
+              )}
               {(request.customerDetails?.email || (request.userId as any)?.email) && (
                 <p className="text-slate-500">
                   {request.customerDetails?.email || (request.userId as any)?.email}

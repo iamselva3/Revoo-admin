@@ -202,6 +202,8 @@ export interface BuybackRequest {
   customerDetails: {
     fullName: string;
     phone: string;
+    /** Second number the customer gave on the website's pickup form (optional) */
+    alternatePhone?: string;
     email?: string;
   };
   deviceDetails: {

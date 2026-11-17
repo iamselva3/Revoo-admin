@@ -165,6 +165,9 @@ export const RequestsListPage: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="font-semibold text-slate-900">{req.customerDetails?.fullName || 'Customer'}</div>
                       <div className="text-[11px] text-slate-500">{req.customerDetails?.phone || ''}</div>
+                      {req.customerDetails?.alternatePhone && (
+                        <div className="text-[11px] text-slate-400">Alt: {req.customerDetails.alternatePhone}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-medium text-slate-900">
