@@ -22,6 +22,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export interface Employee {
   _id: string;
@@ -51,6 +52,8 @@ export const EmployeesPage: React.FC = () => {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  // Partner waiting for "Remove" in the in-page confirm window
+  const [pendingRemove, setPendingRemove] = useState<Employee | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -111,6 +114,7 @@ export const EmployeesPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setPendingRemove(null);
     },
   });
 
@@ -206,6 +210,23 @@ export const EmployeesPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <ConfirmDialog
+        open={Boolean(pendingRemove)}
+        danger
+        title="Remove this pickup partner?"
+        message={
+          <>
+            <span className="font-semibold text-slate-800">{pendingRemove?.fullName}</span> will be removed from pickup partners.
+            This can't be undone.
+          </>
+        }
+        confirmLabel="Remove partner"
+        busy={deleteMutation.isPending}
+        error={deleteMutation.isError ? 'The partner could not be removed. Please try again.' : null}
+        onConfirm={() => pendingRemove && deleteMutation.mutate(pendingRemove._id)}
+        onCancel={() => setPendingRemove(null)}
+      />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -442,9 +463,8 @@ export const EmployeesPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Remove ${emp.fullName} from pickup partners?`)) {
-                          deleteMutation.mutate(emp._id);
-                        }
+                        deleteMutation.reset();
+                        setPendingRemove(emp);
                       }}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                       title="Delete Partner"
