@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Smartphone, Flame, ShoppingBag, Upload, X, Loader2, ImagePlus, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, CheckCircle2, XCircle, Smartphone, Flame, ShoppingBag, Upload, X, Loader2, ImagePlus, AlertCircle, Crop } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { resolveImageUrl } from '../../utils/assetUrl';
 import { uploadImageFile } from '../../utils/uploadImage';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { BANNER_RATIO, BannerPhotoAdjuster, ImageAdjust } from '../../components/banners/BannerPhotoAdjuster';
 
 interface Banner {
   _id: string;
@@ -15,7 +17,11 @@ interface Banner {
   color1: string;
   color2: string;
   icon: string;
+  /** The photo customers see (framed with "Adjust") */
   imageUrl?: string;
+  /** The photo as uploaded, kept so the framing can be changed again */
+  sourceImageUrl?: string;
+  imageAdjust?: ImageAdjust | null;
   isPopupModal?: boolean;
   popupActionText?: string;
   popupActionUrl?: string;
@@ -68,6 +74,11 @@ export const BannersPage: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  // Banner waiting for "Delete" in the in-page confirm window
+  const [pendingDelete, setPendingDelete] = useState<Banner | null>(null);
+  // "Adjust" window, and the photo just uploaded in this session (opened from the computer, full size)
+  const [adjusting, setAdjusting] = useState(false);
+  const [localPhoto, setLocalPhoto] = useState<{ blobUrl: string; storedUrl: string } | null>(null);
 
   const blankForm = (order = 1) => ({
     tag: '',
@@ -78,6 +89,8 @@ export const BannersPage: React.FC = () => {
     color2: '#022C22',
     icon: 'flash_on',
     imageUrl: '',
+    sourceImageUrl: '',
+    imageAdjust: null as ImageAdjust | null,
     isPopupModal: false,
     popupActionText: 'BUY NOW — LIVE SALE',
     popupActionUrl: '/buy',
@@ -115,6 +128,7 @@ export const BannersPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-banners'] });
+      setPendingDelete(null);
     },
   });
 
@@ -153,6 +167,8 @@ export const BannersPage: React.FC = () => {
       color2: banner.color2 || '#022C22',
       icon: banner.icon || 'flash_on',
       imageUrl: banner.imageUrl || '',
+      sourceImageUrl: banner.sourceImageUrl || '',
+      imageAdjust: banner.imageAdjust || null,
       isPopupModal: banner.isPopupModal || false,
       popupActionText: banner.popupActionText || 'BUY NOW — LIVE SALE',
       popupActionUrl: banner.popupActionUrl || '/buy',
@@ -173,13 +189,41 @@ export const BannersPage: React.FC = () => {
     }
     setUploading(true);
     try {
+      // The photo as uploaded is kept as the original; "Adjust" saves a framed copy as the banner
       const url = await uploadImageFile(file, 'banners', { name: formValues.title || 'banner', maxDim: 1600 });
-      setFormValues((prev) => ({ ...prev, imageUrl: url }));
+      setFormValues((prev) => ({ ...prev, imageUrl: url, sourceImageUrl: url, imageAdjust: null }));
+      const blobUrl = URL.createObjectURL(file);
+      setLocalPhoto((prev) => {
+        if (prev) URL.revokeObjectURL(prev.blobUrl);
+        return { blobUrl, storedUrl: url };
+      });
+      // Not banner-shaped (7 : 3)? Open "Adjust" straight away so it can be framed
+      const ratio = await new Promise<number>((resolve) => {
+        const probe = new Image();
+        probe.onload = () => resolve(probe.naturalWidth / probe.naturalHeight);
+        probe.onerror = () => resolve(BANNER_RATIO);
+        probe.src = blobUrl;
+      });
+      if (Math.abs(ratio / BANNER_RATIO - 1) > 0.03) setAdjusting(true);
     } catch (err: any) {
       setFormError(err?.message || 'Banner photo upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
+  };
+
+  // The original photo for "Adjust": the file from this session if it's the same photo, else the stored one
+  const adjustSource = (() => {
+    const original = formValues.sourceImageUrl || formValues.imageUrl;
+    if (!original) return null;
+    return localPhoto && localPhoto.storedUrl === original ? localPhoto.blobUrl : original;
+  })();
+
+  const applyAdjust = async ({ blob, adjust }: { blob: Blob; adjust: ImageAdjust }) => {
+    const file = new File([blob], `banner.${blob.type === 'image/jpeg' ? 'jpg' : 'webp'}`, { type: blob.type });
+    const url = await uploadImageFile(file, 'banners', { name: formValues.title || 'banner', maxDim: 1600 });
+    setFormValues((prev) => ({ ...prev, sourceImageUrl: prev.sourceImageUrl || prev.imageUrl, imageUrl: url, imageAdjust: adjust }));
+    setAdjusting(false);
   };
 
   const handlePickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,9 +325,8 @@ export const BannersPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm('Are you sure you want to delete this promotional banner?')) {
-                        deleteMutation.mutate(b._id);
-                      }
+                      deleteMutation.reset();
+                      setPendingDelete(b);
                     }}
                     className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                     title="Delete Banner"
@@ -296,6 +339,34 @@ export const BannersPage: React.FC = () => {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        danger
+        title="Delete this banner?"
+        message={
+          <>
+            <span className="font-semibold text-slate-800">
+              {pendingDelete?.title || (pendingDelete?.imageUrl ? 'This photo banner' : 'This banner')}
+            </span>{' '}
+            will be removed from the app and the website. This can't be undone. To hide it for now, edit it and switch it off instead.
+          </>
+        }
+        confirmLabel="Delete banner"
+        busy={deleteMutation.isPending}
+        error={deleteMutation.isError ? 'The banner could not be deleted. Please try again.' : null}
+        onConfirm={() => pendingDelete && deleteMutation.mutate(pendingDelete._id)}
+        onCancel={() => setPendingDelete(null)}
+      />
+
+      <BannerPhotoAdjuster
+        open={adjusting && Boolean(adjustSource)}
+        source={adjustSource}
+        initial={formValues.imageAdjust}
+        colors={[formValues.color1, formValues.color2]}
+        onCancel={() => setAdjusting(false)}
+        onApply={applyAdjust}
+      />
 
       {/* Edit / Add Modal with Live Preview */}
       {isModalOpen && (
@@ -343,15 +414,25 @@ export const BannersPage: React.FC = () => {
                             <img src={resolveImageUrl(formValues.imageUrl)} alt="Banner photo" className="w-full aspect-[7/3] object-cover" />
                           </div>
                           <div className="flex items-center justify-between gap-2 px-1">
-                            <span className="text-[11px] text-slate-500">Drop another photo here to replace it</span>
+                            <span className="text-[11px] text-slate-500">
+                              {formValues.imageAdjust ? 'Framed with Adjust. ' : ''}Drop another photo here to replace it
+                            </span>
                             <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setAdjusting(true)}
+                                disabled={uploading}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                              >
+                                <Crop className="w-3.5 h-3.5" /> Adjust
+                              </button>
                               <label className="cursor-pointer inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-300 transition">
                                 <Upload className="w-3.5 h-3.5" /> Replace
                                 <input type="file" accept="image/*" className="hidden" onChange={handlePickFile} disabled={uploading} />
                               </label>
                               <button
                                 type="button"
-                                onClick={() => setFormValues({ ...formValues, imageUrl: '' })}
+                                onClick={() => setFormValues({ ...formValues, imageUrl: '', sourceImageUrl: '', imageAdjust: null })}
                                 className="px-2.5 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold rounded-lg"
                               >
                                 Remove
@@ -380,7 +461,7 @@ export const BannersPage: React.FC = () => {
                     <input
                       type="url"
                       value={formValues.imageUrl}
-                      onChange={(e) => setFormValues({ ...formValues, imageUrl: e.target.value })}
+                      onChange={(e) => setFormValues({ ...formValues, imageUrl: e.target.value, sourceImageUrl: '', imageAdjust: null })}
                       className="w-full text-xs p-2.5 border border-slate-300 rounded-lg"
                       placeholder="or paste an image link (https://…)"
                     />
