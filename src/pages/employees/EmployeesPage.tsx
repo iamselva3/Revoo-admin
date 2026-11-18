@@ -20,9 +20,11 @@ import {
   X,
   Sparkles,
   RefreshCw,
+  Smartphone,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { PartnerAccessModal } from '../../components/doorstep/PartnerAccessModal';
 
 export interface Employee {
   _id: string;
@@ -39,6 +41,9 @@ export interface Employee {
   vehicleType: 'BIKE' | 'VAN' | 'ELECTRIC_SCOOTER';
   completedPickups: number;
   rating: number;
+  /** Can sign in to the partner app (genietn.in/partner) with their phone number and a PIN */
+  partnerAccessEnabled?: boolean;
+  partnerLastLoginAt?: string;
   createdAt: string;
 }
 
@@ -54,6 +59,7 @@ export const EmployeesPage: React.FC = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   // Partner waiting for "Remove" in the in-page confirm window
   const [pendingRemove, setPendingRemove] = useState<Employee | null>(null);
+  const [partnerAccessFor, setPartnerAccessFor] = useState<Employee | null>(null);
 
   // Form states
   const [fullName, setFullName] = useState('');
@@ -455,6 +461,18 @@ export const EmployeesPage: React.FC = () => {
 
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
+                      onClick={() => setPartnerAccessFor(emp)}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
+                        emp.partnerAccessEnabled
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                      }`}
+                      title="Partner app access and PIN"
+                    >
+                      <Smartphone className="w-3 h-3" /> Partner app: {emp.partnerAccessEnabled ? 'On' : 'Off'}
+                    </button>
+                    <button
                       onClick={() => handleOpenEdit(emp)}
                       className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
                       title="Edit Partner"
@@ -478,6 +496,8 @@ export const EmployeesPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {partnerAccessFor && <PartnerAccessModal employee={partnerAccessFor} onClose={() => setPartnerAccessFor(null)} />}
 
       {/* Add / Edit Partner Modal */}
       {(showAddModal || editingEmployee) && (

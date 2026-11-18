@@ -15,6 +15,7 @@ import {
   Flame,
   ShoppingBag,
   Users,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -26,6 +27,7 @@ export const AdminLayout: React.FC = () => {
   const navItems = [
     { to: '/', label: 'Overview', icon: LayoutDashboard },
     { to: '/requests', label: 'Buyback Requests', icon: Inbox },
+    { to: '/doorstep-checks', label: 'Doorstep Checks', icon: ClipboardCheck },
     { to: '/employees', label: 'Employee Management', icon: Users },
     { to: '/catalogue', label: 'Selling Models (Buyback)', icon: Smartphone },
     { to: '/buy-inventory', label: 'Buy Phones (Certified Store)', icon: ShoppingBag },

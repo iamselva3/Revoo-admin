@@ -195,9 +195,47 @@ export interface PricingRule {
   effectiveFrom: string;
 }
 
+/** A pickup partner's check of the device at the customer's door (partner app, genietn.in/partner). */
+export type DoorstepOutcome = 'AGREED' | 'DECLINED' | 'NOT_BUYABLE';
+
+export interface DoorstepCheck {
+  _id: string;
+  requestId: string;
+  requestNumber: string;
+  partnerId: string;
+  partnerName: string;
+  partnerCode: string;
+  device: { modelName: string; brandName?: string; bookedStorage?: string; checkedStorage?: string };
+  quotedAmount: number;
+  requotedAmount: number;
+  checkedAmount: number;
+  finalAmount: number;
+  /** finalAmount − quotedAmount: negative when the partner lowered the price */
+  difference: number;
+  bestAmount: number;
+  worstAmount: number;
+  changes: Array<{ component: string; quoted: number; checked: number; difference: number }>;
+  outcome: DoorstepOutcome;
+  notBuyableReason?: string;
+  imei?: string;
+  photoUrls?: string[];
+  notes?: string;
+  createdAt: string;
+}
+
 export interface BuybackRequest {
   _id: string;
   requestNumber: string;
+  /** Latest doorstep check (the full list is under /partner/admin/requests/:id/checks) */
+  doorstepCheck?: {
+    checkId: string;
+    partnerName: string;
+    quotedAmount: number;
+    finalAmount: number;
+    difference: number;
+    outcome: DoorstepOutcome;
+    checkedAt: string;
+  };
   userId: string | { _id: string; fullName: string; phone: string; email?: string };
   customerDetails: {
     fullName: string;

@@ -189,6 +189,15 @@ export const RequestsListPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 font-bold text-revoo-700 font-mono text-sm">
                       ₹{req.indicativeEstimate?.estimatedAmount?.toLocaleString('en-IN') || 0}
+                      {req.doorstepCheck && (
+                        <div
+                          className={`mt-1 text-[10px] font-bold font-sans ${req.doorstepCheck.difference < 0 ? 'text-rose-700' : 'text-slate-500'}`}
+                          title={`Checked at the door by ${req.doorstepCheck.partnerName}`}
+                        >
+                          At door: ₹{req.doorstepCheck.finalAmount.toLocaleString('en-IN')}
+                          {req.doorstepCheck.difference < 0 && ` (−₹${(-req.doorstepCheck.difference).toLocaleString('en-IN')})`}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span

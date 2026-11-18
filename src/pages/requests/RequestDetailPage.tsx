@@ -24,7 +24,8 @@ import {
   Check,
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
-import { BuybackRequest, RequestStatus } from '../../types';
+import { BuybackRequest, DoorstepCheck, RequestStatus } from '../../types';
+import { DoorstepChecksCard } from '../../components/doorstep/DoorstepCheckDetails';
 
 export const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -80,6 +81,17 @@ export const RequestDetailPage: React.FC = () => {
       const res = await apiClient.get(`/requests/admin/${id}`);
       return res.data.data;
     },
+  });
+
+  // Checks by pickup partners at the customer's door (partner app); empty until a partner checks it
+  const { data: doorstepChecks } = useQuery<DoorstepCheck[]>({
+    queryKey: ['admin-request-doorstep-checks', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/partner/admin/requests/${id}/checks`);
+      return res.data.data;
+    },
+    enabled: Boolean(id),
+    retry: false,
   });
 
   useEffect(() => {
@@ -377,6 +389,9 @@ export const RequestDetailPage: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Pickup partner's check at the door (partner app) */}
+          {doorstepChecks && doorstepChecks.length > 0 && <DoorstepChecksCard checks={doorstepChecks} />}
 
           {/* Customer Declared Photos */}
           {request.photoUrls && request.photoUrls.length > 0 && (

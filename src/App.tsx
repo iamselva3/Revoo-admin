@@ -15,6 +15,7 @@ import { PopupsPage } from './pages/marketing/PopupsPage';
 import { InvoicesPage } from './pages/invoices/InvoicesPage';
 import { EnquiriesPage } from './pages/enquiries/EnquiriesPage';
 import { AuditLogsPage } from './pages/dashboard/AuditLogsPage';
+import { DoorstepChecksPage } from './pages/doorstep/DoorstepChecksPage';
 import { useAuth } from './context/AuthContext';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +53,7 @@ export const App: React.FC = () => {
         <Route path="requests" element={<RequestsListPage />} />
         <Route path="requests/:id" element={<RequestDetailPage />} />
         <Route path="employees" element={<EmployeesPage />} />
+        <Route path="doorstep-checks" element={<DoorstepChecksPage />} />
         <Route path="catalogue" element={<ModelsPage />} />
         <Route path="catalogue/brands" element={<BrandsPage />} />
         <Route path="buy-inventory" element={<BuyPhonesPage />} />
