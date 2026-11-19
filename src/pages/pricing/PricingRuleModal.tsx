@@ -48,7 +48,7 @@ const CONDITION_SECTIONS: PctSection[] = [
       {
         key: 'noWarranty',
         label: 'No valid warranty',
-        def: 20,
+        def: 25,
         hint: 'Taken off once: no warranty, no bill with the same IMEI, or damage that voids it (cracked glass or back, bent frame, broken camera glass, major spots).',
       },
     ],

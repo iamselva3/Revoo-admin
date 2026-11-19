@@ -20,7 +20,7 @@ export const zeroAgePercentages = (): Record<string, number | string> =>
   Object.fromEntries(DEVICE_AGE_BANDS.map((b) => [b.key, 0]));
 
 /** The client's standard phone-age % (same as the price engine's default); new models start with it. */
-export const STANDARD_AGE_PERCENTAGES = { BELOW_3_MONTHS: 0, '3_TO_6_MONTHS': 8, '6_TO_11_MONTHS': 12, ABOVE_11_MONTHS: 20 } as const;
+export const STANDARD_AGE_PERCENTAGES = { BELOW_3_MONTHS: 0, '3_TO_6_MONTHS': 8, '6_TO_11_MONTHS': 12, ABOVE_11_MONTHS: 25 } as const;
 export const standardAgePercentages = (): Record<string, number | string> => ({ ...STANDARD_AGE_PERCENTAGES });
 
 /** Saved values -> form values (missing or invalid -> 0). */
